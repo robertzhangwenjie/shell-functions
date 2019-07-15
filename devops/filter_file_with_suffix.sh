@@ -1,6 +1,6 @@
 #!/bin/bash
-
-# filter files by inputing a dir_path and the suffix of filename
+# Author: robertzhangwenjie <1648855816@qq.com>
+# filter files by inputing a dir_path and some suffixes of filename
 # print help doc
 if [[ $1 =~ ^-(h|H)$ ]];then
     echo -e "usage: $0 [dir] [suffix ...] \nexample: $0 /tmp sh [war] [jar]"
