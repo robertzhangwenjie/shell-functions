@@ -102,6 +102,7 @@ select menu in $FUNCTION_MENUS; do
   case $menu in
     install_kube_master)
       init_k8s_master     
+      break
       ;;
   esac
 done
