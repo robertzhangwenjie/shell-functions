@@ -95,13 +95,13 @@ init_k8s_master() {
 
 FUNCTIOIN_MENUS='install_kube_master install_kube_node'
 select menu in $FUNCTION_MENUS; do
-  prepare_yum_repos  
+  prepare_yum_repos
   eval $menu
   prepare_system_settings
   pull_k8s_image
   case $menu in
     install_kube_master)
-      init_k8s_master     
+      init_k8s_master
       break
       ;;
   esac
