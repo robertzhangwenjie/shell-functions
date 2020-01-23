@@ -66,21 +66,35 @@ install_kube_node() {
 
 # close firewalld, iptables and selinux
 prepare_system_settings() {
+  # 禁用防火墙
   echo "closing firewalld iptables"
   systemctl stop iptables && systemctl disable iptables
   systemctl stop firewalld && systemctl disable firewalld
 
+  # 禁用SELINUX
   echo "disable selinux"
   setenforce 0
   sed -i.bak 's@SELINUX=penforcing@SELINUX=disabled@' /etc/selinux/config
-  
+ 
+  # 设置忽略SWAP错误 
   echo "set kubelet ignore errors for Swap"
-  sed -i.bak 's@KUBELET_EXTRA_ARGS=@KUBELET_EXTRA_ARGS=--fail-swap-on=false@' /etc/sysconfig/kubelet
+  sed -i.bak 's@KUBELET_EXTRA_ARGS.*@KUBELET_EXTRA_ARGS=--fail-swap-on=false@' /etc/sysconfig/kubelet
+  
+  # 开启ipv4流量接入到iptables的链
+  cat > /etc/sysctl.d/k8s.conf << EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+  modprobe br_netfilter
+  sysctl -p /etc/sysctl.d/k8s.conf
 }
 
+# k8s镜像仓库地址
 # REPOSITORY_URL=registry.cn-shenzhen.aliyuncs.com/cookcodeblog
 REPOSITORY_URL=registry.aliyuncs.com/google_containers
 
+# 拉取k8s镜像
 pull_k8s_image() {
   echo "pulling image for k8s.gcr.io"
   for imageName in ${images[@]} ; do
@@ -93,11 +107,17 @@ pull_k8s_image() {
   docker pull coredns/coredns:1.3.1
   docker tag coredns/coredns:1.3.1 k8s.gcr.io/coredns:1.3.1
   docker rmi coredns/coredns:1.3.1
+  
 }
 
+# 初始化K8s-master
 init_k8s_master() {
   echo "init k8s master"
-  kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=Swap
+  # 删除残留的manifest
+  rm -rf /etc/kubernetes/manifests/*
+  # 删除残留的etcd相关信息
+  rm -rf /var/lib/etcd/*
+  kubeadm init --kubernetes-version=v1.15.0 --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=Swap
 }
 
 FUNCTION_MENUS='install_kube_master install_kube_node'
