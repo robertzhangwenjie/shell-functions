@@ -37,10 +37,17 @@ KUBECTL=kubectl-${KUBECTL_VERSION}
 KUBEADM=kubeadm-${KUBEADM_VERSION}
 
 # install kubelet kubectl kubeadm and docker
+# docker acceleration mirror
+install-acceleration-mirror() {
+  echo '{ "registry-mirrors": ["https://jre91sie.mirror.aliyuncs.com"] }' > /etc/docker/daemon.json
+  systemctl daemon-reload 
+  systemctl restart docker
+}
+
 install_docker() {
   echo "installing $DOCKER" 
   yum install $DOCKER -y
-  systemctl enable docker && systemctl start docker
+  install-acceleration-mirror
 }
 
 install_kube_master() {
@@ -72,7 +79,7 @@ prepare_system_settings() {
 }
 
 # REPOSITORY_URL=registry.cn-shenzhen.aliyuncs.com/cookcodeblog
-REPOSITORY_URL=mirrorgooglecontainers
+REPOSITORY_URL=registry.aliyuncs.com/google_containers
 
 pull_k8s_image() {
   echo "pulling image for k8s.gcr.io"
@@ -93,7 +100,7 @@ init_k8s_master() {
   kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=Swap
 }
 
-FUNCTIOIN_MENUS='install_kube_master install_kube_node'
+FUNCTION_MENUS='install_kube_master install_kube_node'
 select menu in $FUNCTION_MENUS; do
   prepare_yum_repos
   eval $menu
