@@ -38,7 +38,7 @@ KUBEADM=kubeadm-${KUBEADM_VERSION}
 
 # install kubelet kubectl kubeadm and docker
 # docker acceleration mirror
-install-acceleration-mirror() {
+install_acceleration_mirror() {
   echo '{ "registry-mirrors": ["https://jre91sie.mirror.aliyuncs.com"] }' > /etc/docker/daemon.json
   systemctl daemon-reload 
   systemctl restart docker
@@ -47,7 +47,7 @@ install-acceleration-mirror() {
 install_docker() {
   echo "installing $DOCKER" 
   yum install $DOCKER -y
-  install-acceleration-mirror
+  install_acceleration_mirror
 }
 
 install_kube_master() {
