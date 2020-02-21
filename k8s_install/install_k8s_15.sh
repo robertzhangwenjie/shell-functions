@@ -78,7 +78,7 @@ prepare_system_settings() {
  
   # 设置忽略SWAP错误 
   echo "set kubelet ignore errors for Swap"
-  sed -i.bak 's@KUBELET_EXTRA_ARGS.*@KUBELET_EXTRA_ARGS=--fail-swap-on=false@' /etc/sysconfig/kubelet
+  sed -i.bak 's@KUBELET_EXTRA_ARGS.*@KUBELET_EXTRA_ARGS="--fail-swap-on=false"@' /etc/sysconfig/kubelet
   
   # 开启ipv4流量接入到iptables的链
   cat > /etc/sysctl.d/k8s.conf << EOF
