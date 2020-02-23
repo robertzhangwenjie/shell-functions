@@ -47,14 +47,16 @@ function azk8spull()
 			echo '***Warning: Can not support pull $image right now.'
 		fi
 		if [ $domainName != "" ]; then
-			echo "***Pulling image from mirror $domainName/$repoName/$imageName."
+			echo "***Pulling image from mirror $domainName/$repoName/$imageName..."
 			docker pull  $domainName/$repoName/$imageName
 			if [ $? -eq 0 ]; then
-				echo "***Taging $domainName/$repoName/$imageName to $image."
+				echo "***Taging $domainName/$repoName/$imageName to $image..."
 				docker tag $domainName/$repoName/$imageName $image
 				if [ $? -eq 0 ]; then
 					echo "***Pull $image successfully."
 				fi
+				echo "***Removing iamge $domainName/$reproName/$imageName..."
+				docker rmi $domainName/$reproName/$imageName
 			fi
 		fi
 	fi
