@@ -1,0 +1,4 @@
+quay.io/prometheus/node-exporter:v0.18.10
+quay.io/prometheus/alertmanager:v0.20.0
+quay.io/coreos/kube-rbac-proxy:v0.4.1
+quay.io/coreos/prometheus-operator:v0.36.0

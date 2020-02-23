@@ -4,7 +4,7 @@
 
 # prepare yum repos
 prepare_yum_repos() {
-  echo "starting prepare yum repos of k8s and docker-ce"
+  echo "Preparing yum repos for k8s and docker-ce"
   cp repos.d/* /etc/yum.repos.d/
 
   yum install wget -y
@@ -17,12 +17,12 @@ prepare_yum_repos() {
 
 # required images for installing k8s
 images=(
-kube-apiserver:v1.15.0
-kube-controller-manager:v1.15.0
-kube-scheduler:v1.15.0
-kube-proxy:v1.15.0
-pause:3.1
-etcd:3.3.10
+k8s.gcr.io/kube-apiserver:v1.15.0
+k8s.gcr.io/kube-controller-manager:v1.15.0
+k8s.gcr.io/kube-scheduler:v1.15.0
+k8s.gcr.io/kube-proxy:v1.15.0
+k8s.gcr.io/pause:3.1
+k8s.gcr.io/etcd:3.3.10
 )
 
 # docker and kube-serials version
@@ -90,24 +90,13 @@ EOF
   sysctl -p /etc/sysctl.d/k8s.conf
 }
 
-# k8s镜像仓库地址
-# REPOSITORY_URL=registry.cn-shenzhen.aliyuncs.com/cookcodeblog
-REPOSITORY_URL=registry.aliyuncs.com/google_containers
 
 # 拉取k8s镜像
 pull_k8s_image() {
   echo "pulling image for k8s.gcr.io"
-  for imageName in ${images[@]} ; do
-      docker pull ${REPOSITORY_URL}/$imageName
-      docker tag ${REPOSITORY_URL}/$imageName k8s.gcr.io/$imageName
-      docker rmi ${REPOSITORY_URL}/$imageName
-  done
-  
-  echo "pulling coredns image"
-  docker pull coredns/coredns:1.3.1
-  docker tag coredns/coredns:1.3.1 k8s.gcr.io/coredns:1.3.1
-  docker rmi coredns/coredns:1.3.1
-  
+  for image in ${images[@]} ; do
+	./pull_k8s_image.sh $image
+  done  
 }
 
 # 初始化K8s-master
