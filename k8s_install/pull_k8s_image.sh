@@ -55,8 +55,8 @@ function azk8spull()
 				if [ $? -eq 0 ]; then
 					echo "***Pull $image successfully."
 				fi
-				echo "***Removing iamge $domainName/$reproName/$imageName..."
-				docker rmi $domainName/$reproName/$imageName
+				echo "***Removing iamge $domainName/$repoName/$imageName..."
+				docker rmi $domainName/$repoName/$imageName
 			fi
 		fi
 	fi
