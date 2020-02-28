@@ -15,16 +15,6 @@ prepare_yum_repos() {
 }
 
 
-# required images for installing k8s
-images=(
-k8s.gcr.io/kube-apiserver:v1.15.0
-k8s.gcr.io/kube-controller-manager:v1.15.0
-k8s.gcr.io/kube-scheduler:v1.15.0
-k8s.gcr.io/kube-proxy:v1.15.0
-k8s.gcr.io/pause:3.1
-k8s.gcr.io/etcd:3.3.10
-)
-
 # docker and kube-serials version
 DOCKER_VERSION=18.09.8
 KUBELET_VERSION=1.15.0
@@ -37,49 +27,30 @@ KUBECTL=kubectl-${KUBECTL_VERSION}
 KUBEADM=kubeadm-${KUBEADM_VERSION}
 
 # install kubelet kubectl kubeadm and docker
-# docker acceleration mirror
-install_acceleration_mirror() {
-  echo '{ "registry-mirrors": ["https://jre91sie.mirror.aliyuncs.com"] }' > /etc/docker/daemon.json
-  systemctl daemon-reload 
-  systemctl restart docker
-}
 
 install_docker() {
   echo "installing $DOCKER" 
   yum install $DOCKER -y
   install_acceleration_mirror
+  echo '{ "registry-mirrors": ["https://jre91sie.mirror.aliyuncs.com"] }' > /etc/docker/daemon.json
+  systemctl daemon-reload 
+  systemctl restart docker
 }
 
-install_kube_master() {
+install_k8s() {
+  prepare_yum_repos
   echo "installing $KUBELET $KUBECTL $KUBEADM"
   install_docker
   yum install $KUBELET $KUBECTL $KUBEADM -y
   systemctl enable kubelet
 }
 
-install_kube_node() {
-  echo "installing $KUBELET $KUBEADM"
-  install_docker
-  yum install $KUBELET $KUBEADM
-  systemctl enable kubelet
-}
 
-# close firewalld, iptables and selinux
-prepare_system_settings() {
-  # 禁用防火墙
-  echo "closing firewalld iptables"
-  systemctl stop iptables && systemctl disable iptables
-  systemctl stop firewalld && systemctl disable firewalld
-
-  # 禁用SELINUX
-  echo "disable selinux"
-  setenforce 0
-  sed -i.bak 's@SELINUX=penforcing@SELINUX=disabled@' /etc/selinux/config
- 
-  # 设置忽略SWAP错误 
+k8s_system_initialization() {
+  # 设置k8s安装时忽略SWAP错误 
   echo "set kubelet ignore errors for Swap"
   sed -i.bak 's@KUBELET_EXTRA_ARGS.*@KUBELET_EXTRA_ARGS="--fail-swap-on=false"@' /etc/sysconfig/kubelet
-  
+
   # 开启ipv4流量接入到iptables的链
   cat > /etc/sysctl.d/k8s.conf << EOF
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -93,10 +64,9 @@ EOF
 
 # 拉取k8s镜像
 pull_k8s_image() {
-  echo "pulling image for k8s.gcr.io"
-  for image in ${images[@]} ; do
-	./pull_k8s_image.sh $image
-  done  
+  while read image;do 
+      ./pull_k8s_image.sh $image
+  done<$1 
 }
 
 # 初始化K8s-master
@@ -112,9 +82,10 @@ init_k8s_master() {
 FUNCTION_MENUS='install_kube_master install_kube_node'
 select menu in $FUNCTION_MENUS; do
   prepare_yum_repos
-  eval $menu
-  prepare_system_settings
-  pull_k8s_image
+  install_k8s
+  k8s_system_initialization
+  # k8s_images为list of k8s images
+  pull_k8s_image k8s_images
   case $menu in
     install_kube_master)
       init_k8s_master

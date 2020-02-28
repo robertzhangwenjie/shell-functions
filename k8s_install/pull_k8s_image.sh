@@ -46,7 +46,7 @@ function azk8spull()
 		else
 			echo '***Warning: Can not support pull $image right now.'
 		fi
-		if [ $domainName != "" ]; then
+		if [ "$domainName"x != x ]; then
 			echo "***Pulling image from mirror $domainName/$repoName/$imageName..."
 			docker pull  $domainName/$repoName/$imageName
 			if [ $? -eq 0 ]; then
