@@ -44,7 +44,6 @@ net.ipv4.tcp_fin_timeout= 30	#修改系統默认的TIMEOUT 时间。
 net.ipv4.tcp_max_tw_buckets = 20480 #表示系统同时保持TIME_WAIT的最大数量，如果超过这个数字，TIME_WAIT的连接将会被立即清除并警告，默认为180000
 net.ipv4.tcp_max_syn_backlog = 20480 #记录那些尚未收到客户端确认信息的连接请求的最大值，对于有128M内存的系统而言，缺省值为1024
 net.core.netdev_max_backlog = 262144 #每个网络接口接收数据包的速度比内核处理这些包的速度块时，允许送到队列的数据包的最大数
-net.ipv4.tcp_fin_timeout = 20  #如果套接字由本段要求关闭，这个参数决定了它保持再FIN-WAIT-2状态的时间，缺省值为60
 EOF
 # 使配置生效
 sysctl -p
