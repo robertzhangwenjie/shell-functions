@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
-# proxy fro k8s images
-DOCKERHUB_PROXY="dockerhub.azk8s.cn"
-GCR_PROXY="gcr.azk8s.cn"
-QUAY_PROXY="quay.azk8s.cn"
+# dockerhub镜像仓库
+# DOCKERHUB_PROXY="dockerhub.azk8s.cn"
+DOCKERHUB_PROXY="registry.cn-hangzhou.aliyuncs.com"
+
+# k8s.gcr.io镜像仓库
+# GCR_PROXY="gcr.azk8s.cn"
+GCR_PROXY="registry.cn-hangzhou.aliyuncs.com"
+
+# quay.io镜像仓库
+# QUAY_PROXY="quay.azk8s.cn"
+QUAY_PROXY="quay-mirror.qiniu.com"
 
 function azk8spull()
 {
