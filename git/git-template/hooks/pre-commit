@@ -1,0 +1,13 @@
+###
+ # @Author: robert zhang
+ # @Date: 2020-07-04 20:14:05
+ # @LastEditTime: 2020-07-04 21:48:18
+ # @LastEditors: robert zhang
+ # @Description: 
+ # @
+### 
+
+#!/bin/sh
+set -e
+
+echo "pre-commit"
