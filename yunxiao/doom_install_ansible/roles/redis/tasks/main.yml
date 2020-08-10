@@ -1,4 +1,7 @@
 ---
+- name: 创建临时目录
+  file: name={{tmp_dir}} state=directory
+
 - name: 分发镜像
   copy: src={{item}} dest={{ tmp_dir }}
   with_fileglob:
@@ -7,6 +10,14 @@
 - name: 加载redis 镜像
   shell: docker image load < {{ tmp_dir }}/doom-redis.tar.gz
 
-- name: 启动redis
-  shell: docker run -itd --name {{ redis_name }} -p {{ redis_port }}:6379  {{ redis_image }}
+- name: 删除redis容器
+  shell: docker rm -f {{ redis_name }}
   ignore_errors: True
+
+- name: 启动redis
+  block:
+  - name: 尝试启动doom-redis
+    shell: docker run -itd --name {{ redis_name }} -p {{ redis_port }}:6379  {{ redis_image }}
+  rescue:
+  - name: 失败重启doom-redis
+    shell: docker restart {{ redis_name }}

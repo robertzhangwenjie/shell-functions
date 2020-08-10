@@ -1,7 +1,7 @@
 # 安装包目录 
 software_dir: '/opt/binary_pkg'
 # 临时工作目录
-tmp_dir: '/tmp/doom'
+tmp_dir: '/opt/doom'
 
 # doom-server配置
 license: ''

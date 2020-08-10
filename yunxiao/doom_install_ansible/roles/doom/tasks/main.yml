@@ -1,4 +1,7 @@
 ---
+- name: 创建临时目录
+  file: name={{tmp_dir}} state=directory
+
 - name: 分发doom-server二进制包
   copy: src={{ item }} dest={{ tmp_dir }}
   with_fileglob:
@@ -7,10 +10,12 @@
 - name: 载入镜像
   shell: docker load < {{ tmp_dir }}/doom-server.tar.gz
 
+- name: 删除doom-server
+  shell: docker rm -f {{ doom_name }}
+  ignore_errors: True
 
 - name: 启动doom server
   shell: docker run -d --name {{ doom_name }} -p 80:80 -p 8000:8000 -p 7001:7001 {{ doom_image }}
-  ignore_errors: True
 
 - name: 渲染配置文件
   template: src=pocdoom.properties.j2 dest={{ tmp_dir }}/pocdoom.properties

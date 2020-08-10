@@ -15,4 +15,3 @@
 
 - name: 拷贝时区
   copy: src=/usr/share/zoneinfo/Asia/Shanghai dest=/etc/localtime
-

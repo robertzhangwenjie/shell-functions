@@ -1,4 +1,7 @@
 ---
+- name: 创建临时目录
+  file: name={{tmp_dir}} state=directory
+
 - name: mysql镜像文件分发
   copy: src={{item}} dest={{tmp_dir}}
   with_fileglob:
@@ -7,11 +10,25 @@
 - name: 加载doom-mysql镜像
   shell: docker load < {{ tmp_dir }}/doom-mysql.tar.gz
 
+- name: 删除doom-mysql容器
+  shell: docker rm -f {{ mysql_name }}
+
 - name: 启动doom-mysql
-  shell: docker run -itd --name {{ mysql_name }}  -p 3306:3306 -e MYSQL_ROOT_PASSWORD={{ mysql_password }} {{ mysql_image }} && sleep 10
-  ignore_errors: True
+  block:
+    - name: 启动doom-mysql
+      shell: docker run -itd --name {{ mysql_name }}  -p 3306:3306 -e MYSQL_ROOT_PASSWORD={{ mysql_password }} {{ mysql_image }}
+  rescue:
+    - name: 失败重启doom-mysql
+      shell: docker restart {{ mysql_name }}
+    
 
 - name: 创建doom数据库
-  shell: docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p123456 -B -e "create database doom;"'
+  block:
+    - name: 休息10s尝试创建数据库
+      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "create database doom;"'
+  rescue:
+    - name: 休息10s再次尝试创建数据库
+      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "create database doom;"'
+
 
   

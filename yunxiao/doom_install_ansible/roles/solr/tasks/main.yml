@@ -1,4 +1,7 @@
 ---
+- name: 创建临时目录
+  file: name={{tmp_dir}} state=directory
+
 - name: 分发镜像文件
   copy: src={{item}} dest={{ tmp_dir }}
   with_fileglob:
@@ -7,9 +10,13 @@
 - name: 加载solr镜像
   shell: docker  load < {{ tmp_dir }}/doom-solr.tar.gz
 
+- name: 删除doom-solr
+  shell: docker rm -f {{ solr_name }}
+  ignore_errors: True
+
 - name: 启动solr
   shell: docker run -itd --name {{solr_name}} -p 8983:8983 {{solr_image}}
-  ignore_errors: True
+  
 
 - name: 创建core
   shell: docker exec -it {{solr_name}} /opt/solr/bin/solr create -c success_case

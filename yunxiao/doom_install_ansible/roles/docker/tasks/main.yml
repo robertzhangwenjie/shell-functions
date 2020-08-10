@@ -1,4 +1,7 @@
 ---
+- name: 创建临时目录
+  file: name={{tmp_dir}} state=directory
+  
 - name: 分发并解压docker二进制包
   unarchive: src={{ item }} dest={{ tmp_dir }}
   with_fileglob:
