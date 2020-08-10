@@ -16,11 +16,3 @@
 - name: 拷贝时区
   copy: src=/usr/share/zoneinfo/Asia/Shanghai dest=/etc/localtime
 
-- name: 同步系统时间
-  yum: name=ntpdate state=present
-- name: 同步系统时间
-  shell: ntpdate time.windows.com
-
-- name: 拷贝部署包
-  copy: src={{software_dir}} dest={{ tmp_dir }}
-

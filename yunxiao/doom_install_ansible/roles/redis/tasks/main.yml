@@ -1,6 +1,12 @@
 ---
+- name: 分发镜像
+  copy: src={{item}} dest={{ tmp_dir }}
+  with_fileglob:
+  - "{{software_dir}}/doom-redis.tar.gz"
+
 - name: 加载redis 镜像
-  shell: docker image load < {{ tmp_dir }}/doom-redis.tar
+  shell: docker image load < {{ tmp_dir }}/doom-redis.tar.gz
 
 - name: 启动redis
-  shell: docker run -itd --name -p 6379:6379 {{ redis_name }} {{ redis_image }}
+  shell: docker run -itd --name {{ redis_name }} -p {{ redis_port }}:6379  {{ redis_image }}
+  ignore_errors: True

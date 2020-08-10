@@ -4,7 +4,7 @@ doom.current.env = 1
 doom.domain.url = {{ doom_url }}
 
 {% for host in groups['mysql'] %}
-pri.db.url       = jdbc:mysql://{{ {{ hostvars[host].inventory_hostname }} }}:3306/doom??characterEncoding=utf-8
+pri.db.url       = jdbc:mysql://{{ hostvars[host].inventory_hostname }}:3306/doom??characterEncoding=utf-8
 {% endfor %}
 
 pri.db.username  = {{ mysql_username }}
@@ -12,14 +12,14 @@ pri.db.password  = {{ mysql_password }}
 
 
 {% for host in groups['solr'] %}
-doom.solr.url      = http://{{ {{ hostvars[host].inventory_hostname }} }}:8983/solr/success_case
+doom.solr.url      = http://{{  hostvars[host].inventory_hostname  }}:8983/solr/success_case
 {% endfor %}
 
 redis.dbIndex       = {{ redis_dbIndex }}
 redis.expiration    = 3000
 
 {% for host in groups['redis'] %}
-redis.host          = {{ {{ hostvars[host].inventory_hostname }} }}
+redis.host          = {{  hostvars[host].inventory_hostname }}
 {% endfor %}
 
 redis.maxActive     = 600

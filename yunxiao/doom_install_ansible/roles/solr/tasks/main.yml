@@ -1,18 +1,26 @@
 ---
+- name: 分发镜像文件
+  copy: src={{item}} dest={{ tmp_dir }}
+  with_fileglob:
+  - "{{software_dir}}/doom-solr.tar.gz"
+
 - name: 加载solr镜像
-  shell: docker image load < {{ tmp_dir }}/doom-solr.tar
+  shell: docker  load < {{ tmp_dir }}/doom-solr.tar.gz
 
 - name: 启动solr
   shell: docker run -itd --name {{solr_name}} -p 8983:8983 {{solr_image}}
+  ignore_errors: True
 
 - name: 创建core
   shell: docker exec -it {{solr_name}} /opt/solr/bin/solr create -c success_case
+  ignore_errors: True
 
 - name: 复制managed-schema.xml文件
   copy: src=managed-schema.xml dest={{tmp_dir}}/managed-schema.xml
 
 - name: 设置success_case schema.xml
   shell: docker cp {{tmp_dir}}/managed-schema.xml {{solr_name}}:/opt/solr/server/solr/success_case/conf/managed-schema.xml
+ 
 
 - name: 设置schema.xml权限
-  shell: docker exec -u root {{solr_name}} chmod 755 /opt/solr/server/solr/success_case/conf/managed-schema.xm
+  shell: docker exec -u root {{solr_name}} chmod 755 /opt/solr/server/solr/success_case/conf/managed-schema.xml
