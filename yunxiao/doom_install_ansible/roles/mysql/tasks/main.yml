@@ -1,0 +1,11 @@
+---
+- name: 加载doom-mysql镜像
+  shell: docker image load < {{ tmp_dir }}/doom-mysql.tar
+
+- name: 启动doom-mysql
+  shell: docker run -itd --name {{ mysql_name }}  -p 3306:3306 -e MYSQL_ROOT_PASSWORD={{ mysql_password }} {{ mysql_image }}
+
+- name: 创建doom数据库
+  shell: docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p123456 -B -e "create database doom;"'
+
+  

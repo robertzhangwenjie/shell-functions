@@ -1,0 +1,42 @@
+---
+- name: 0.系统初始化
+  gather_facts: false
+  hosts: all 
+  roles:
+    - common
+  tags: common 
+
+- name: 1.部署Docker
+  gather_facts: false
+  hosts: all 
+  roles:
+    - docker 
+  tags: docker
+
+- name: 2.部署mysql
+  gather_facts: false
+  hosts: mysql
+  roles:
+    -  mysql
+  tags: mysql
+
+- name: 3.部署redis
+  gather_facts: false
+  hosts: redis
+  roles:
+    - redis
+  tags: redis
+
+- name: 4.部署solr
+  gather_facts: false
+  hosts: solr
+  roles:
+    - solr
+  tags: solr
+
+- name: 4.部署doom
+  gather_facts: false
+  hosts: doom
+  roles:
+    - doom
+  tags: doom

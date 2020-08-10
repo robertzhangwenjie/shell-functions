@@ -1,0 +1,6 @@
+---
+- name: 加载redis 镜像
+  shell: docker image load < {{ tmp_dir }}/doom-redis.tar
+
+- name: 启动redis
+  shell: docker run -itd --name -p 6379:6379 {{ redis_name }} {{ redis_image }}

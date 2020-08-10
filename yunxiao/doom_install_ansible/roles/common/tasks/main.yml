@@ -1,0 +1,26 @@
+---
+# 这个剧本在所有节点上运行
+
+- name: 关闭firewalld
+  service: name=firewalld state=stopped enabled=no
+
+- name: 关闭selinux
+  lineinfile:
+    dest: /etc/selinux/config
+    regexp: "^SELINUX="
+    line: "SELINUX=disabled"
+  
+- name: 即时生效
+  shell: setenforce 0
+
+- name: 拷贝时区
+  copy: src=/usr/share/zoneinfo/Asia/Shanghai dest=/etc/localtime
+
+- name: 同步系统时间
+  yum: name=ntpdate state=present
+- name: 同步系统时间
+  shell: ntpdate time.windows.com
+
+- name: 拷贝部署包
+  copy: src={{software_dir}} dest={{ tmp_dir }}
+
