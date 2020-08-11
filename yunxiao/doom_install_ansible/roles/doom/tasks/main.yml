@@ -2,28 +2,28 @@
 - name: 创建临时目录
   file: name={{tmp_dir}} state=directory
 
+- name: 创建配置目录
+  file: name={{doom_cfg_dir}} state=directory
+
 - name: 分发doom-server二进制包
   copy: src={{ item }} dest={{ tmp_dir }}
   with_fileglob:
-    - "{{ software_dir }}/doom-server.tar.gz"
+    - "{{ software_dir }}/{{doom_pkg}}"
 
 - name: 载入镜像
-  shell: docker load < {{ tmp_dir }}/doom-server.tar.gz
+  shell: docker load < {{ tmp_dir }}/{{doom_pkg}}
 
 - name: 删除doom-server
   shell: docker rm -f {{ doom_name }}
   ignore_errors: True
 
-- name: 启动doom server
-  shell: docker run -d --name {{ doom_name }} -p {{doom_port}}:80 -p 8000:8000 -p 7001:7001 {{ doom_image }}
-
 - name: 渲染配置文件
-  template: src=pocdoom.properties.j2 dest={{ tmp_dir }}/pocdoom.properties
+  template: src=pocdoom.properties.j2 dest={{ doom_cfg_dir }}/pocdoom.properties
+
+- name: 启动doom server
+  shell: docker run -d --name {{ doom_name }} -v {{ doom_cfg_dir }}:{{ doom_cfg_dir }} -p {{doom_port}}:80 -p 8000:8000 -p 7001:7001 {{ doom_image }}
+
  
-
-- name: 复制配置文件到容器中
-  shell: docker cp {{ tmp_dir }}/pocdoom.properties {{ doom_name }}:{{doom_cfg_dir}}/pocdoom.properties
-
 - name: 重启doom-server
   shell: docker restart {{ doom_name }}
 

@@ -10,6 +10,7 @@ doom_url: 'http://doompoc.rdc.aliyun.com'
 doom_port: 80
 doom_image: 'registry.cn-hangzhou.aliyuncs.com/doom/clouddoom:1.0.16'
 doom_name: 'doom-server'
+doom_pkg: 'doom-server-1.0.16.tar.gz'
 
 # mysql配置
 mysql_username: 'root'
