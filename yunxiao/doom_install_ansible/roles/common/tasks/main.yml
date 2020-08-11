@@ -9,6 +9,7 @@
     dest: /etc/selinux/config
     regexp: "^SELINUX="
     line: "SELINUX=disabled"
+  ignore_errors: True
   
 - name: 即时生效
   shell: setenforce 0

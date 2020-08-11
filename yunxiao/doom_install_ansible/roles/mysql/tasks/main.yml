@@ -12,16 +12,13 @@
 
 - name: 判断doom-mysql是否在运行
   shell: docker ps -a | awk 'NR != 1{print $NF}' | grep {{mysql_name}}
-  register: solrName
+  register: mysqlName
   ignore_errors: True
 - debug: var=mysqlName
 
 - name: 删除doom-mysql
   shell: docker rm -f {{ mysql_name }}
   when: mysqlName.stdout == mysql_name
-
-- name: 删除doom-mysql容器
-  shell: docker rm -f {{ mysql_name }}
 
 - name: 启动doom-mysql
   block:
@@ -35,10 +32,10 @@
 - name: 创建doom数据库
   block:
     - name: 休息10s尝试创建数据库
-      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "create database doom DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"'
+      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "{{doom_init_sql}}" '
   rescue:
     - name: 休息10s再次尝试创建数据库
-      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "create database doom;"'
+      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "{{doom_init_sql}}"'
 
 
   
