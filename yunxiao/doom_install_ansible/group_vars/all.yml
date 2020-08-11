@@ -31,4 +31,4 @@ solr_name: 'doom-solr'
 solr_image: 'solr:7.5.0'
 
 # 客户端包
-client_pkg: 'cloud.lib_7.0.0.21.zip'
+client_pkg: 'cloud.lib_7.0.0.31.zip'

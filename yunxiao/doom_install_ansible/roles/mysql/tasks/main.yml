@@ -25,7 +25,7 @@
 - name: 创建doom数据库
   block:
     - name: 休息10s尝试创建数据库
-      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "create database doom;"'
+      shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "create database doom DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"'
   rescue:
     - name: 休息10s再次尝试创建数据库
       shell: sleep 10 && docker exec -it {{ mysql_name }} sh -c 'exec mysql -uroot -p{{ mysql_password }} -e "create database doom;"'

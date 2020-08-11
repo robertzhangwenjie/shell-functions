@@ -18,7 +18,7 @@
   ignore_errors: True
 
 - name: 渲染配置文件
-  template: src=pocdoom.properties.j2 dest={{ doom_cfg_dir }}/pocdoom.properties
+  template: src=pocdoom.properties.j2 dest={{ doom_cfg_dir }}/config.properties
 
 - name: 启动doom server
   shell: docker run -d --name {{ doom_name }} -v {{ doom_cfg_dir }}:{{ doom_cfg_dir }} -p {{doom_port}}:80 -p 8000:8000 -p 7001:7001 {{ doom_image }}
