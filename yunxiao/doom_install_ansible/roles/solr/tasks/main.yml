@@ -10,17 +10,27 @@
 - name: 加载solr镜像
   shell: docker  load < {{ tmp_dir }}/doom-solr.tar.gz
 
+- name: 判断solr是否在运行
+  shell: docker ps -a | awk 'NR != 1{print $NF}' | grep {{solr_name}}
+  register: solrName
+  ignore_errors: True
+- debug: var=solrName
+
 - name: 删除doom-solr
   shell: docker rm -f {{ solr_name }}
-  ignore_errors: True
+  when: solrName.stdout == solr_name
 
 - name: 启动solr
   shell: docker run -itd --name {{solr_name}} -p 8983:8983 {{solr_image}}
   
 
 - name: 创建core
-  shell: docker exec -it {{solr_name}} /opt/solr/bin/solr create -c success_case
-  ignore_errors: True
+  block:
+  - name: 尝试创建core
+    shell: sleep 10 && docker exec -it {{solr_name}} /opt/solr/bin/solr create -c success_case
+  rescue:
+  - name: 再次尝试创建core
+    shell: sleep 10 && docker exec -it {{solr_name}} /opt/solr/bin/solr create -c success_case
 
 - name: 复制managed-schema.xml文件
   copy: src=managed-schema.xml dest={{tmp_dir}}/managed-schema.xml

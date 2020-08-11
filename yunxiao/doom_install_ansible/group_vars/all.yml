@@ -4,9 +4,11 @@ software_dir: '/opt/binary_pkg'
 tmp_dir: '/opt/doom'
 
 # doom-server配置
-license: ''
+doom_cfg_dir: '/home/admin/doomconfig'
+license: 'B+qXthItT6HBwuT24oD4qmOW+8OAUN2qa7+tRGwlEBln3k5jGRBBN0RZ1ddMU5R0la0ZOq25cQZtdBO1Ljolhw==|PbnLZz0Pub3IAb5vCSf4wg5jc3QRnZ1M9yfOmDGLHloDB8exxPki+zNQS689RIFSJvZV42uCIV+CuJ10EojaoQ=='
 doom_url: 'http://doompoc.rdc.aliyun.com'
-doom_image: 'registry.cn-hangzhou.aliyuncs.com/doom/clouddoom:1.0.9'
+doom_port: 80
+doom_image: 'registry.cn-hangzhou.aliyuncs.com/doom/clouddoom:1.0.16'
 doom_name: 'doom-server'
 
 # mysql配置
