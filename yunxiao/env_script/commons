@@ -1,0 +1,271 @@
+#!/bin/bash
+# 这是一个公共方法脚本
+
+SCRIPT_DIR="$HOME/env_script"
+GET_ANTX_PROPERTIES_URL="http://aenv.aliyun.com/extern/exportAntxProperties.do"
+LOCK_FILE=$HOME/deploy_script_lock
+WORK_DIR=$HOME
+BASE_CONFIG=""
+CHECK_URL=""
+DEFAULT_CONFIG="$BASE_CONFIG/tomcat"
+USER=`whoami`
+PORT=`whoami`
+
+if [ -z $JAVA_HOME ];then
+  export JAVA_HOME=/usr/install/java8
+  export PATH=$PATH:$JAVA_HOME/bin
+  export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+fi
+
+TOMCAT7_VERSION="apache-tomcat-7.0.54"
+TOMCAT7_HOME="/home/${USER}/${TOMCAT7_VERSION}"
+
+
+# 获取tomcat版本
+if [ $TOMCAT_HOME ];then
+  TOMCAT_HOME=$TOMCAT_HOME
+else
+  TOMCAT_HOME=$TOMCAT7_HOME
+fi
+
+WAR_APP=true
+
+function killAllChildren() {
+  echo "kill all children process..."
+  for proc in `jobs -p`
+  do
+    kill -9 $proc
+  done
+}
+
+function cleanUp() {
+  trap - INT TERM EXIT
+  [[ -f "$LOCK_FILE" ]] && rm "$LOCK_FILE"
+}
+
+# 应用正在部署，如果要杀掉时，则
+trap 'cleanUp' INT TERM EXIT
+trap 'cleanUp;killAllChildren' TERM
+
+function checkPIDfile() {
+  [[ ! -f "$LOCK_FILE" ]] && return 1
+  procpid=`<"$LOCK_FILE" `
+  [[ -z "$procpid" ]] && return 1
+  if [ -e "/proc/$procpid" ]; then
+    # 查看进程的执行命令，判断是否包含deploy.sh
+    cat "/proc/$procpid/cmdline" | grep -q deploy_project_env.sh
+    return
+  fi
+  return 1
+}
+
+function createPIDfile() {
+  mypid=$1
+  echo "$mypid" > $LOCK_FILE
+  RESTART_PID=$mypid
+}
+
+log_info(){
+  echo "[INFO] $1"
+}
+
+
+project_log_error_exit(){
+  [ -f "$HOME/deploy_project_env.log" ] && tail -n 100 $HOME/deploy_project_env.log
+  echo $1 | tee >> $HOME/deploy_error.log
+  echo "[ERROR:] $1 call stack trace:"
+  rm -rf $LOCK_FILE
+  exit 1
+}
+
+set_project_antx_properties(){
+    log_info "Get Default Properties : \"$GET_ANTX_PROPERTIES_URL?appId=$ENV_ID&appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
+    wget -O antx.properties.${APP_NAME}.${ENV_TYPE} "http://yunxiao.aliyun.com/aenv-config/api/export/exportAntxProperties?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
+    log_info "Set env variables"
+    touch env.properties
+
+    # 将当前环境的配置项设置为环境变量
+    if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]];then
+      cat ~/antx.properties.${APP_NAME}.${ENV_TYPE} | while read line
+      do
+        origin_key=`echo $line | awk -F"=" '{print $1}'`
+        key=`eval echo $origin_key`
+        origin_value=`echo $line | awk -F"=" '{print $2}'`
+        value=`eval echo $origin_value`
+
+        log_info "Set env variable:$key=$value"
+        echo "export $key=$value" >> env.properties
+        source env.properties
+      done
+    fi
+
+}
+
+# 清理当前用户运行的所有java服务
+kill_ws() {
+    log_info "Kill All Web Service"
+    killall -u ${USER} -9 java >>/dev/null 2>&
+    sleep 5
+}
+
+
+rm_except() {
+    cd ${WORK_DIR}
+    local all_files=`ls`
+    local except_files="$@"
+    log_info "rm except files:$except_files"
+    for file in $all_files
+    do
+        local del=true
+        for except_file in $except_files
+        do
+            if [[ "$file" == "$except_file" ]]; then
+                del=false
+                break
+            fi
+        done
+        [ $del = true ] && rm -rf $file
+    done
+}
+
+# 清理家目录
+clear_env(){
+  log_info "Cleanning The Work Dir : $WORK_DIR"
+  rm_except "env_script"  
+}
+
+# 检查部署是否成功
+after_check() {
+    log_info "开始检查部署是否成功"
+
+    if [ "$CHECK_URL"x == ""x ]; then
+      log_info "无检查URL"
+      return 
+    fi
+        
+    check_url=$CHECK_URL
+    log_info "Starting check $APP_NAME with url: $check_url"
+    local count=0
+    local max_check_num=3
+
+    while true
+    do
+      ((count++))
+      [[ $count -gt ${max_check_num} ]]  && project_log_error_exit "Failed to check app with url: $check_url .Please go to the server to check the application's startup log." 
+      
+      log_info "try $count times"
+      local resp_code=`curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 $check_url`
+      [[ "$resp_code" == "200" ]] && break;
+    done
+
+    log_info "$check_url return 200"
+
+    check_port=`netstat -an |grep -w ${PORT}`
+    log_info "check_port : ${check_port}"
+    if [[ "${#check_port}" -eq 0 ]];then
+      #log_info "no CHECK_URL, do not check status, return success!"
+      log_info "No CHECK_URL,Please add CHECK_URL "
+        else
+      log_info "No CHECK_URL,But request port ${PORT} is successful.Please confirm again"
+    fi
+}
+
+# 部署war包
+deploy_war() {
+  local deploy_package=$1
+  log_info "下载tomcat解压包"
+  wget -nv "http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT_VERSION}.zip"
+  log_info "Starting deploy $deploy_package"
+
+  #PORT1/2/3是tomcat的其他端口
+  MINUS=`expr 8080 - $PORT`
+  PORT1=`expr 8443 - $MINUS`
+  PORT2=`expr 8009 - $MINUS + 20`
+  PORT3=`expr 8005 - $MINUS + 20`
+
+  # 修改tomcat配置文件
+  cd $TOMCAT_HOME/conf
+  sed -i "s/8080/$PORT/g" server.xml
+  sed -i "s/8443/$PORT1/g" server.xml
+  sed -i "s/8009/$PORT2/g" server.xml
+  sed -i "s/8005/$PORT3/g" server.xml
+  echo "$PORT1"
+  cd $TOMCAT_HOME/bin
+  chmod 755 *.sh
+  sh startup.sh
+  sleep 3
+  return
+}
+
+# 部署jar包
+deploy_jar() {
+  local deploy_package=$1
+  log_info "Starting deploy $deploy_package"
+  nohup java -jar $deploy_package 2>&1 &
+  return
+}
+
+# 部署.tar.gz包
+deploy_tgz() {
+  local deploy_package=$1
+  log_info "Starting deploy ${deploy_package}"
+  # 部署目录
+  deploy_dir=${NGINX_HOME}/html/${APP_NAME}/
+  log_info "清理部署目录: ${deploy_dir}"
+  [ -d ${deploy_dir} ] && rm -rf ${deploy_dir}
+  log_info "解压部署包"
+  tar -xvf ${deploy_package} -C  ${deploy_dir} > /dev/null 2>&1
+}
+
+# 部署docker容器
+deploy_docker() {
+  local imageName=$1
+  log_info "Starting deploy $imageName"
+  # 部署容器时，需要获取容器中的端口，进行映射，此项可以在配置项中配置
+  # 默认为暴漏的端口
+  CONTAINER_PORT=${container_port:-${PORT}}
+  log_info "PORT:${PORT},CONTAINER_PORT:${CONTAINER_PORT}"
+  # 部署的容器名称为应用名-项目名
+  sudo docker run -d --name ${APP_NAME}-${CRID} -p ${PORT}:${CONTAINER_PORT} $imageName 
+}
+
+# 开始部署
+start_env() {
+  war_Suffix=".war"
+  jar_Suffix=".jar"
+  tar_gz_Suffix=".tar.gz"
+  zip_Suffix=".zip"
+
+  # 获取构建包名
+  deploy_package=`echo ${TAR_ADDRESS##*/}`
+
+  # 如果部署包为docker镜像(判断是否包含":"")，则使用root权限部署
+  if [[ $deploy_package =~ .+:.+ ]];then
+    imageName=$TAR_ADDRESS
+    deploy_docker $imageName
+  fi
+
+  # 下载部署包,-nv非详细输出
+  log_info "开始下载 $TAR_ADDRESS"
+  wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS
+  
+  # 下载失败则退出
+  [ $? -eq 1 ] && echo "下载失败" && exit 1
+  
+  # 根据包名匹配对应的部署脚本
+  if [[ ${deploy_package} =~ $war_Suffix ]];then
+    deploy_war ${deploy_package}
+
+  elif [[ ${deploy_package} =~ $jar_Suffix ]];then
+    deploy_jar  ${deploy_package}
+   
+  elif [[ ${deploy_package} =~ $tar_gz_Suffix ]];then
+    deploy_tgz ${deploy_package}
+  else 
+    log_info "没有此构建包的部署方式"
+    exit 1
+  fi
+
+  log_info "Deploy ${deploy_package} completed"
+}
+
