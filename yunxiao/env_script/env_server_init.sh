@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-26 09:34:23
+ # @LastEditTime: 2020-08-26 10:36:55
  # @LastEditors: robert zhang
  # @Description: 初始化账号配置,需要root权限
  # @  
@@ -15,12 +15,12 @@
 YUNXIAO_GOURP=yunxiao
 ENV_SCRIPT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
 ENV_SCRIPT="env_script.zip"
-UPLOAD_SCRIPT="curl -X POST -F warName=@env_script.zip -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 http://package.switch.aliyun.com:9090/upload"
+UPLOAD_SCRIPT="curl -X POST -F warName=@/root/${ENV_SCRIPT} -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 http://package.switch.aliyun.com:9090/upload"
 
 # 上传env_script
 upload_env_script() {
   echo "压缩env_script到/root/${ENV_SCRIPT}"
-  zip -r /root/${ENV_SCRIPT} ./*
+  zip -qr -d /root/${ENV_SCRIPT} ./*
 
   echo "上传: $UPLOAD_SCRIPT"
   ENV_SCRIPT_ADDRESS=`eval $UPLOAD_SCRIPT`
@@ -29,7 +29,7 @@ upload_env_script() {
 # 下载env_scropt脚本包
 get_env_script() {
   echo "下载${ENV_SCRIPT}"
-  wget -nv -O /root/${ENV_SCRIPT} ${ENV_SCRIPT_DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
+  wget -nv -P /root -O ${ENV_SCRIPT} ${ENV_SCRIPT_DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
 }
 
 # 添加sudo组，并设置sudo权限
@@ -64,9 +64,13 @@ add_user() {
   echo "useradd $username successfully"
 }
 
+# 上传脚本
+upload_env_script
 # 获取脚本
 get_env_script
 # 添加sudo执行权限组
 add_sudo_group
 # 添加用户，并copy脚本到对应家目录下
-add_user $1
+if [ -n $1 ];then
+  add_user $1
+fi
