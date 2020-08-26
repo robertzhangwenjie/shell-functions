@@ -62,7 +62,7 @@ function checkPIDfile() {
 }
 
 function createPIDfile() {
-  if [ -n $DEPLOY_CMD ];then
+  if [ -n "$DEPLOY_CMD" ];then
     mypid=`ps ux | grep "${DEPLOY_CMD}" | grep -v grep | awk '{print $2}'`
     log_info "create lock_file: $LOCK_FILE"
     echo "$mypid" >$LOCK_FILE
