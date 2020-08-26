@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-26 08:39:42
+ # @LastEditTime: 2020-08-26 21:18:01
  # @LastEditors: robert zhang
  # @Description: 
  # @
@@ -17,7 +17,7 @@ CRID=$2
 
 source $HOME/env_script/commons
 
-if [ $APP_NAME ]; then 
+if [ -z $APP_NAME ]; then 
   echo "释放失败，缺少参数：appName"
   exit 1 
 fi

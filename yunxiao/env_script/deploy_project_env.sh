@@ -1,4 +1,12 @@
 #!/bin/bash
+###
+# @Author: robert zhang
+# @Date: 2019-09-02 12:23:30
+ # @LastEditTime: 2020-08-26 21:46:51
+ # @LastEditors: robert zhang
+# @Description:
+# @
+###
 # 环境一键部署脚本
 # 传递参数案例：
 #  自有环境部署spring-demo 5 FUNC upload/.../SNAPSHOT.jar no 15 1
@@ -20,7 +28,7 @@ DEPLOY_ID=$6
 ENV_SCRIPT_PATH="$HOME/env_script"
 ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/env_script.zip"
 
-update_env_script(){
+update_env_script() {
   echo "starting update env_script"
   echo "clearing env_script"
   rm -rf env_script/*
@@ -28,9 +36,19 @@ update_env_script(){
   # 下载到指定目录
   echo "Try download env_script"
   wget -nv ${ENV_SCRIPT_URL}
-  echo "下载失败，拷贝/root/env_script.zip"
-  sudo cp /root/env_script.zip $HOME
-  unzip env_script.zip
+  local download=$?
+  if [ $download -eq 1 ]; then
+    echo "下载失败，尝试拷贝/root/env_script.zip"
+    sudo cp /root/env_script.zip $HOME
+    if [ $? -eq 0 ]; then
+      echo "拷贝成功，开始解压$ENV_SCRIPT_PATH"
+      unzip env_script.zip
+    else
+      echo "拷贝失败"
+    fi
+  else
+    unzip env_script.zip
+  fi
 
   # 解压并赋权
   echo "unzip env_script successful"
@@ -56,7 +74,7 @@ if [ "x$ENV_TYPE" = "x" ]; then
 fi
 
 # 检查部署包是否传递
-if [ -z ${TAR_ADDRESS} ];then
+if [ -z ${TAR_ADDRESS} ]; then
   echo -n -e "\e[0;32;1mDeployPackage should not be empty\e[0m"
   exit 1
 fi
@@ -65,5 +83,5 @@ fi
 echo "update_env_script"
 update_env_script
 
-#项目环境部署，必要参数：$APP_NAME $CRID 
+#项目环境部署，必要参数：$APP_NAME $CRID
 $ENV_SCRIPT_PATH/env_deploy_flow.sh $APP_NAME $CRID $ENV_TYPE $TAR_ADDRESS $NEED_RESTORE $DEPLOY_ID

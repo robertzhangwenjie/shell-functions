@@ -1,12 +1,12 @@
 #!/bin/bash
 ###
- # @Author: robert zhang
- # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-25 17:59:34
+# @Author: robert zhang
+# @Date: 2019-09-02 12:23:30
+ # @LastEditTime: 2020-08-26 21:46:43
  # @LastEditors: robert zhang
- # @Description: 初始化执行脚本
- # @
-### 
+# @Description: 初始化执行脚本
+# @
+###
 # 申请环境时执行的初始化脚本
 # $1:应用名称
 # $2:公共环境--环境类型

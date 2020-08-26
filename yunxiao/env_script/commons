@@ -8,16 +8,17 @@ WORK_DIR=$HOME
 CHECK_URL=""
 RESTORE_FILE=last_deploy_cmd.sh
 RESTORE_FILE_PATH=$HOME/${RESTORE_FILE}
-USER=`whoami`
-PORT=`whoami`
+USER=$(whoami)
+PORT=$(whoami)
+DEPLOY_CMD=""
 
 # 获取nginx家目录
 NGINX_HOME=/usr/install/nginx/
-rpm -ql nginx > /dev/null 2>&1
-if [ $? -eq 0 ] && NGINX_HOME=/etc/nginx
+rpm -ql nginx >/dev/null 2>&1
+[ $? -eq 0 ] && NGINX_HOME=/etc/nginx
 
 
-if [ -z $JAVA_HOME ];then
+if [ -z $JAVA_HOME ]; then
   export JAVA_HOME=/usr/install/java8
   export PATH=$PATH:$JAVA_HOME/bin
   export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
@@ -27,18 +28,13 @@ TOMCAT7_VERSION="apache-tomcat-7.0.54"
 TOMCAT7_HOME="/home/${USER}/${TOMCAT7_VERSION}"
 
 # 获取tomcat版本
-if [ $TOMCAT_HOME ];then
-  TOMCAT_HOME=$TOMCAT_HOME
-else
-  TOMCAT_HOME=$TOMCAT7_HOME
-fi
-
+TOMCAT_HOME=$TOMCAT7_HOME
+TOMCAT_VERSION=$TOMCAT7_VERSION
 
 # 杀死所有后台进程
 function killAllChildren() {
   echo "kill all children process..."
-  for proc in `jobs -p`
-  do
+  for proc in $(jobs -p); do
     kill -9 $proc
   done
 }
@@ -50,12 +46,12 @@ function cleanUp() {
 }
 
 # 应用正在部署，如果要杀掉时，则
-trap 'cleanUp' INT TERM EXIT
-trap 'cleanUp;killAllChildren' TERM
+# INT -- CTRL + C
+trap 'cleanUp;killAllChildren' INT
 
 function checkPIDfile() {
   [[ ! -f "$LOCK_FILE" ]] && return 1
-  procpid=`<"$LOCK_FILE" `
+  procpid=$(<"$LOCK_FILE")
   [[ -z "$procpid" ]] && return 1
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
@@ -66,21 +62,24 @@ function checkPIDfile() {
 }
 
 function createPIDfile() {
-  mypid=$1
-  log_info "create lock_file: $LOCK_FILE"
-  echo "$mypid" > $LOCK_FILE
+  if [ -n $DEPLOY_CMD ];then
+    mypid=`ps ux | grep "${DEPLOY_CMD}" | grep -v grep | awk '{print $2}'`
+    log_info "create lock_file: $LOCK_FILE"
+    echo "$mypid" >$LOCK_FILE
+  fi
+  
 }
 
-log_info(){
+log_info() {
   echo "[INFO] $1"
 }
 
-project_log_error_exit(){
+project_log_error_exit() {
   local error_message=$1
 
-  if [ "$NEED_RESTORE" == "yes"  ];then
+  if [ "$NEED_RESTORE" == "yes" ]; then
     log_info "部署失败"
-    local restore_cmd=`cat $RESTORE_FILE_PATH`
+    local restore_cmd=$(cat $RESTORE_FILE_PATH)
     [ -n $restore_cmd ] && log_info "开始执行上一次成功部署命令" && exec $restore_cmd
   fi
 
@@ -90,113 +89,109 @@ project_log_error_exit(){
   exit 1
 }
 
-get_project_antx_properties(){
-    if [ -z $APP_NAME ] || [ -z $ENV_TYPE ];then
-      return 0
-    fi
+get_project_antx_properties() {
+  if [ -z $APP_NAME ] || [ -z $ENV_TYPE ]; then
+    return 0
+  fi
 
-    log_info "Get antx properties : \"$GET_ANTX_PROPERTIES_URL?appId=$ENV_ID&appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
-    rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
-    curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
+  log_info "Get antx properties : \"$GET_ANTX_PROPERTIES_URL?appId=$ENV_ID&appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
+  rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
+  curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
 
-    # 将当前环境的配置项设置为环境变量
-    if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]];then
-      cat $HOME/antx.properties.$APP_NAME.$ENV_TYPE | while read line
-      do
-        origin_key=`echo $line | awk -F"=" '{print $1}'`
-        key=`eval echo $origin_key`
-        origin_value=`echo $line | awk -F"=" '{print $2}'`
-        value=`eval echo $origin_value`
+  # 将当前环境的配置项设置为环境变量
+  if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]]; then
+    cat $HOME/antx.properties.$APP_NAME.$ENV_TYPE | while read line; do
+      origin_key=$(echo $line | awk -F"=" '{print $1}')
+      key=$(eval echo $origin_key)
+      origin_value=$(echo $line | awk -F"=" '{print $2}')
+      value=$(eval echo $origin_value)
 
-        log_info "Set env variable:$key=$value"
-        echo "export $key=$value" >> env.properties.$APP_NAME.$ENV_TYPE
-      done
-    fi
+      log_info "Set env variable:$key=$value"
+      echo "export $key=$value" >>env.properties.$APP_NAME.$ENV_TYPE
+      source env.properties.$APP_NAME.$ENV_TYPE
+    done
+  fi
 
 }
 
 # 清理当前用户运行的所有java服务
 kill_ws() {
-    log_info "Kill All Web Service"
-    killall -u ${USER} -9 java >/dev/null 2>&1
-    sleep 5
+  log_info "Kill All Web Service"
+  killall -u ${USER} -9 java >/dev/null 2>&1
+  sleep 5
 }
 
-
 rm_except() {
-    cd ${WORK_DIR}
-    local all_files=`ls`
-    local except_files="$@"
-    log_info "rm except files:$except_files"
-    for file in $all_files
-    do
-        local del=true
-        for except_file in $except_files
-        do
-            if [[ "$file" == "$except_file" ]]; then
-                del=false
-                break
-            fi
-        done
-        [ $del = true ] && rm -rf $file
+  cd ${WORK_DIR}
+  local all_files=$(ls)
+  local except_files="$@"
+  log_info "rm except files:$except_files"
+  for file in $all_files; do
+    local del=true
+    for except_file in $except_files; do
+      if [[ "$file" == "$except_file" ]]; then
+        del=false
+        break
+      fi
     done
+    [ $del = true ] && rm -rf $file
+  done
 }
 
 # 清理环境
-clear_env(){
+clear_env() {
 
   log_info "starting clear $WORK_DIR"
   # 杀掉上一次的部署
-  if checkPIDfile ; then
-    local pid=`<"$LOCK_FILE" `
+  if checkPIDfile; then
+    local pid=$(<"$LOCK_FILE")
     kill -9 $pid
     rm $LOCK_FILE
-    rm_except "env_script $RESTORE_FILE"  
+    rm_except "env_script $RESTORE_FILE"
   else
-    rm_except "env_script"  
+    rm_except "env_script"
   fi
 }
 
 release_env() {
   log_info "开始释放 ${APP_NAME}"
   kill_ws
-  rm_except "env_script"  
+  rm_except "env_script"
 }
 
 # 检查部署是否成功
 after_check() {
-    log_info "开始检查部署是否成功"
+  log_info "开始检查部署是否成功"
 
-    if [ "$CHECK_URL"x == ""x ]; then
-      log_info "无检查URL"
-      return 
-    fi
-        
-    check_url=$CHECK_URL
-    log_info "Starting check $APP_NAME with url: $check_url"
-    local count=0
-    local max_check_num=3
+  if [ "$CHECK_URL"x == ""x ]; then
+    log_info "无检查URL"
+    return
+  fi
 
-    while true
-    do
-      ((count++))
-      [[ $count -gt ${max_check_num} ]]  && project_log_error_exit "Failed to check app with url: $check_url .Please go to the server to check the application's startup log." 
-      
-      log_info "try $count times"
-      local resp_code=`curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 $check_url`
-      [[ "$resp_code" == "200" ]] && break;
-    done
+  check_url=$CHECK_URL
+  log_info "Starting check $APP_NAME with url: $check_url"
+  local count=0
+  local max_check_num=3
 
-    log_info "$check_url return 200"
+  while true; do
+    ((count++))
+    [[ $count -gt ${max_check_num} ]] && project_log_error_exit "Failed to check app with url: $check_url .Please go to the server to check the application's startup log."
 
-    check_port=`netstat -an |grep -w ${PORT}`
-    log_info "check_port : ${check_port}"
-    if [[ "${#check_port}" -eq 0 ]];then
-      #log_info "no CHECK_URL, do not check status, return success!"
-      log_info "No CHECK_URL,Please add CHECK_URL "
-        else
-      log_info "No CHECK_URL,But request port ${PORT} is successful.Please confirm again"
-    fi
+    log_info "try $count times"
+    local resp_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 $check_url)
+    [[ "$resp_code" == "200" ]] && break
+  done
+
+  log_info "$check_url return 200"
+
+  check_port=$(netstat -an | grep -w ${PORT})
+  log_info "check_port : ${check_port}"
+  if [[ "${#check_port}" -eq 0 ]]; then
+    #log_info "no CHECK_URL, do not check status, return success!"
+    log_info "No CHECK_URL,Please add CHECK_URL "
+  else
+    log_info "No CHECK_URL,But request port ${PORT} is successful.Please confirm again"
+  fi
 }
 
 # 部署war包
@@ -204,13 +199,14 @@ deploy_war() {
   local deploy_package=$1
   log_info "下载tomcat解压包"
   wget -nv "http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT_VERSION}.zip"
+  unzip ${TOMCAT_VERSION}.zip
   log_info "Starting deploy $deploy_package"
 
   #PORT1/2/3是tomcat的其他端口
-  MINUS=`expr 8080 - $PORT`
-  PORT1=`expr 8443 - $MINUS`
-  PORT2=`expr 8009 - $MINUS + 20`
-  PORT3=`expr 8005 - $MINUS + 20`
+  MINUS=$(expr 8080 - $PORT)
+  PORT1=$(expr 8443 - $MINUS)
+  PORT2=$(expr 8009 - $MINUS + 20)
+  PORT3=$(expr 8005 - $MINUS + 20)
 
   # 修改tomcat配置文件
   cd $TOMCAT_HOME/conf
@@ -230,7 +226,9 @@ deploy_war() {
 deploy_jar() {
   local deploy_package=$1
   log_info "Starting deploy $deploy_package"
-  nohup java -jar $deploy_package 2>&1 &
+  DEPLOY_CMD="java -jar $deploy_package"
+  nohup $DEPLOY_CMD 2>&1 &
+
   return
 }
 
@@ -239,12 +237,11 @@ deploy_tgz() {
   local deploy_package=$1
   log_info "Starting deploy ${deploy_package}"
 
-
   # 生成nginx配置文件，根据ENV_TYPE.APP_NAME.com作为域名 NGINX_HTML_DIR/APP_NAME作为root
   eval "cat <<EOF 
-  $(< nginx.conf.tpl) 
-  EOF " 
-  > ${NGINX_HOME}/conf/conf.d/${APP_NAME}-${ENV_TYPE}.conf
+  $(<nginx.conf.tpl) 
+  EOF "
+  >${NGINX_HOME}/conf/conf.d/${APP_NAME}-${ENV_TYPE}.conf
   # echo $ENV_TYPE | tr [A-Z] [a-z]
 
   # 部署目录
@@ -269,8 +266,11 @@ deploy_docker() {
   # 默认为暴漏的端口
   CONTAINER_PORT=${container_port:-${PORT}}
   log_info "PORT:${PORT},CONTAINER_PORT:${CONTAINER_PORT}"
+  # 判断是否正在部署
+  docker ps -a | grep nginx-test
+  [ $? -eq 0 ] && sudo docker rm -f ${APP_NAME}-${CRID}
   # 部署的容器名称为应用名-项目名
-  sudo docker run -d --name ${APP_NAME}-${CRID} -p ${PORT}:${CONTAINER_PORT} $imageName 
+  sudo docker run -d --name ${APP_NAME}-${CRID} -p ${PORT}:${CONTAINER_PORT} $imageName
 }
 
 # 开始部署
@@ -281,10 +281,10 @@ start_env() {
   zip_Suffix=".zip"
 
   # 获取构建包名
-  deploy_package=`echo ${TAR_ADDRESS##*/}`
+  deploy_package=$(echo ${TAR_ADDRESS##*/})
 
   # 如果部署包为docker镜像(判断是否包含":"")，则使用root权限部署
-  if [[ $deploy_package =~ .+:.+ ]];then
+  if [[ $deploy_package =~ .+:.+ ]]; then
     imageName=$TAR_ADDRESS
     deploy_docker $imageName
   fi
@@ -292,23 +292,22 @@ start_env() {
   # 下载部署包,-nv非详细输出
   log_info "开始下载 $TAR_ADDRESS"
   wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS
-  
+
   # 下载失败则退出
   [ $? -eq 1 ] && project_log_error_exit "下载失败"
-  
+
   # 根据包名匹配对应的部署脚本
-  if [[ ${deploy_package} =~ $war_Suffix ]];then
+  if [[ ${deploy_package} =~ $war_Suffix ]]; then
     deploy_war ${deploy_package}
 
-  elif [[ ${deploy_package} =~ $jar_Suffix ]];then
-    deploy_jar  ${deploy_package}
-   
-  elif [[ ${deploy_package} =~ $tar_gz_Suffix ]];then
+  elif [[ ${deploy_package} =~ $jar_Suffix ]]; then
+    deploy_jar ${deploy_package}
+
+  elif [[ ${deploy_package} =~ $tar_gz_Suffix ]]; then
     deploy_tgz ${deploy_package}
-  else 
+  else
     project_log_error_exit "没有此构建包的部署方式"
   fi
-
+  
   log_info "Deploy ${deploy_package} completed"
 }
-

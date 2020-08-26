@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-26 10:36:55
+ # @LastEditTime: 2020-08-26 20:08:53
  # @LastEditors: robert zhang
  # @Description: 初始化账号配置,需要root权限
  # @  
@@ -15,20 +15,21 @@
 YUNXIAO_GOURP=yunxiao
 ENV_SCRIPT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
 ENV_SCRIPT="env_script.zip"
-UPLOAD_SCRIPT="curl -X POST -F warName=@/root/${ENV_SCRIPT} -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 http://package.switch.aliyun.com:9090/upload"
+UPLOAD_SCRIPT="curl -X POST -F warName=@${ENV_SCRIPT} -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 http://package.switch.aliyun.com:9090/upload"
 
 # 上传env_script
 upload_env_script() {
-  echo "压缩env_script到/root/${ENV_SCRIPT}"
-  zip -qr -d /root/${ENV_SCRIPT} ./*
+  echo "压缩:${ENV_SCRIPT}"
+  cd ..
+  zip -qr ${ENV_SCRIPT} /env_script/*
 
-  echo "上传: $UPLOAD_SCRIPT"
+  echo "上传:$UPLOAD_SCRIPT"
   ENV_SCRIPT_ADDRESS=`eval $UPLOAD_SCRIPT`
 }
 
 # 下载env_scropt脚本包
 get_env_script() {
-  echo "下载${ENV_SCRIPT}"
+  echo "下载:${ENV_SCRIPT}"
   wget -nv -P /root -O ${ENV_SCRIPT} ${ENV_SCRIPT_DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
 }
 
@@ -48,11 +49,12 @@ add_sudo_group() {
 # 添加脚本到用户家目录
 install_env_script() {
    local username=$1
+   
+   echo "cp /root/$ENV_SCRIPT to /home/$username/$ENV_SCRIPT"
    cp /root/$ENV_SCRIPT /home/$username/ 
-   chown $1:$1 -R /home/$username/
-   echo "cp /root/$ENV_SCRIPT to /home/$username successfully"
    for filename in `ls /home/$username`;do
-      [ "${filename}" == "env_script.zip" ] && yes| unzip $filename
+      [ "${filename}" == "${ENV_SCRIPT}" ] && yes| unzip $filename
+      chown $username:$username -R /home/$username/
   done
 }
 
