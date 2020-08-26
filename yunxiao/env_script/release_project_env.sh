@@ -1,25 +1,28 @@
 #!/bin/bash
+###
+ # @Author: robert zhang
+ # @Date: 2019-09-02 12:23:30
+ # @LastEditTime: 2020-08-26 08:39:42
+ # @LastEditors: robert zhang
+ # @Description: 
+ # @
+### 
 # 这个脚本用于释放部署的应用
 # $1: 应用名
 # $2：项目的CRID, 如果是公共环境则是trunk
 # $3: 环境类型
 
-appName=$1
-projectCrid=$2
-typeUse=$3
+APP_NAME=$1
+CRID=$2
 
-cd $HOME
 source $HOME/env_script/commons
 
-project_env_source $ENV_NAME
-
-if [ $appName ] && [ $typeUse ]; then 
-      echo "do nothing" > out.log
-else
-      echo "kill ws" > out.log
-      # 停服务
-      kill_ws
-      # 清理环境
-      clear_env
+if [ $APP_NAME ]; then 
+  echo "释放失败，缺少参数：appName"
+  exit 1 
 fi
+
+# 释放环境
+release_env
+
 exit 0

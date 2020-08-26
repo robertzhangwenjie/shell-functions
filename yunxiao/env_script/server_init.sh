@@ -2,11 +2,15 @@
 ###
  # @Author: robert zhang
  # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-25 17:16:09
+ # @LastEditTime: 2020-08-26 00:13:59
  # @LastEditors: robert zhang
  # @Description: 初始化账号配置,需要root权限
- # @ 
+ # @  
 ### 
+
+# 需要先将脚本存放到package.switch服务器上
+# 如果不支持拷贝，可以使用curl命令上传 
+# 例如 curl -X POST -F warName=@env_script.zip -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 http://package.switch.aliyun.com:9090/upload
 # 云效用户组
 YUNXIAO_GOURP=yunxiao
 ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/env_script.zip"
@@ -19,9 +23,9 @@ get_env_script() {
 
 # 添加sudo组，并设置sudo权限
 add_sudo_group() {
-  groupadd ${YUNXIAO_GOURP}
+  groupadd ${YUNXIAO_GOURP} >/dev/null 2>&1
   # 设置yunxiao用户组拥有sudo权限，在执行docker命令时不需要密码
-  local add_group_cfg="%${YUNXIAO_GROUP} ALL=(ALL) NOPASSWD:/usr/bin/docker"
+  local add_group_cfg="%${YUNXIAO_GROUP:-yunxiao} ALL=(ALL) NOPASSWD:/usr/bin/docker"
   local add_env_cfg='Defaults env_keep += "PATH"'
   grep "^$add_group_cfg" /etc/sudoers > /dev/null
   [ $? -eq 1 ] && echo "$add_group_cfg" >> /etc/sudoers

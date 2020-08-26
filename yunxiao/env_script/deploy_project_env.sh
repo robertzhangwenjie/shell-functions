@@ -32,7 +32,7 @@ update_env_script(){
 
   # 解压并赋权
   echo "unzip env_script successful"
-  chmod 755 -R ${ENV_SCRIPT_PATH}
+  chmod u+x -R ${ENV_SCRIPT_PATH}
   echo "update env_script done"
 }
 
@@ -64,4 +64,4 @@ echo "update_env_script"
 update_env_script
 
 #项目环境部署，必要参数：$APP_NAME $CRID 
-$ENV_SCRIPT_PATH/env_deploy_flow.sh $APP_NAME $CRID $ENV_TYPE $TAR_ADDRESS $NEED_RESTORE
+$ENV_SCRIPT_PATH/env_deploy_flow.sh $APP_NAME $CRID $ENV_TYPE $TAR_ADDRESS $NEED_RESTORE $DEPLOY_ID

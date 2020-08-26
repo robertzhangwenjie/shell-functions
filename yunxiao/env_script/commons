@@ -1,13 +1,13 @@
 #!/bin/bash
 # 这是一个公共方法脚本
 
-SCRIPT_DIR="$HOME/env_script"
-GET_ANTX_PROPERTIES_URL="http://aenv.aliyun.com/extern/exportAntxProperties.do"
-LOCK_FILE=$HOME/deploy_script_lock
+# 获取配置项的api
+GET_ANTX_PROPERTIES_URL="https://devops.linewellcloud.com/aenv-config/api/export/exportAntxProperties"
+LOCK_FILE=$HOME/${APP_NAME}.pid
 WORK_DIR=$HOME
-BASE_CONFIG=""
 CHECK_URL=""
-DEFAULT_CONFIG="$BASE_CONFIG/tomcat"
+RESTORE_FILE=last_deploy_cmd.sh
+RESTORE_FILE_PATH=$HOME/${RESTORE_FILE}
 USER=`whoami`
 PORT=`whoami`
 
@@ -20,7 +20,6 @@ fi
 TOMCAT7_VERSION="apache-tomcat-7.0.54"
 TOMCAT7_HOME="/home/${USER}/${TOMCAT7_VERSION}"
 
-
 # 获取tomcat版本
 if [ $TOMCAT_HOME ];then
   TOMCAT_HOME=$TOMCAT_HOME
@@ -28,8 +27,7 @@ else
   TOMCAT_HOME=$TOMCAT7_HOME
 fi
 
-WAR_APP=true
-
+# 杀死所有后台进程
 function killAllChildren() {
   echo "kill all children process..."
   for proc in `jobs -p`
@@ -38,6 +36,7 @@ function killAllChildren() {
   done
 }
 
+# 清理LOCK_FILE
 function cleanUp() {
   trap - INT TERM EXIT
   [[ -f "$LOCK_FILE" ]] && rm "$LOCK_FILE"
@@ -61,32 +60,41 @@ function checkPIDfile() {
 
 function createPIDfile() {
   mypid=$1
+  log_info "create lock_file: $LOCK_FILE"
   echo "$mypid" > $LOCK_FILE
-  RESTART_PID=$mypid
 }
 
 log_info(){
   echo "[INFO] $1"
 }
 
-
 project_log_error_exit(){
-  [ -f "$HOME/deploy_project_env.log" ] && tail -n 100 $HOME/deploy_project_env.log
-  echo $1 | tee >> $HOME/deploy_error.log
-  echo "[ERROR:] $1 call stack trace:"
+  local error_message=$1
+
+  if [ "$NEED_RESTORE" == "yes"  ];then
+    log_info "部署失败"
+    local restore_cmd=`cat $RESTORE_FILE_PATH`
+    [ -n $restore_cmd ] && log_info "开始执行上一次成功部署命令" && exec $restore_cmd
+  fi
+
+  [ -f "$HOME/deploy_project_env_${DEPLOY_ID}.log" ] && tail -n 100 $HOME/deploy_project_env_${DEPLOY_ID}.log
+  echo "[ERROR] $error_message"
   rm -rf $LOCK_FILE
   exit 1
 }
 
-set_project_antx_properties(){
-    log_info "Get Default Properties : \"$GET_ANTX_PROPERTIES_URL?appId=$ENV_ID&appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
-    wget -O antx.properties.${APP_NAME}.${ENV_TYPE} "http://yunxiao.aliyun.com/aenv-config/api/export/exportAntxProperties?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
-    log_info "Set env variables"
-    touch env.properties
+get_project_antx_properties(){
+    if [ -z $APP_NAME ] || [ -z $ENV_TYPE ];then
+      return 0
+    fi
+
+    log_info "Get antx properties : \"$GET_ANTX_PROPERTIES_URL?appId=$ENV_ID&appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
+    rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
+    curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
 
     # 将当前环境的配置项设置为环境变量
     if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]];then
-      cat ~/antx.properties.${APP_NAME}.${ENV_TYPE} | while read line
+      cat $HOME/antx.properties.$APP_NAME.$ENV_TYPE | while read line
       do
         origin_key=`echo $line | awk -F"=" '{print $1}'`
         key=`eval echo $origin_key`
@@ -94,8 +102,8 @@ set_project_antx_properties(){
         value=`eval echo $origin_value`
 
         log_info "Set env variable:$key=$value"
-        echo "export $key=$value" >> env.properties
-        source env.properties
+        eval $key=$value
+        echo "$key=$value" >> env.properties.$APP_NAME.$ENV_TYPE
       done
     fi
 
@@ -128,9 +136,24 @@ rm_except() {
     done
 }
 
-# 清理家目录
+# 清理环境
 clear_env(){
-  log_info "Cleanning The Work Dir : $WORK_DIR"
+
+  log_info "starting clear $WORK_DIR"
+  # 杀掉上一次的部署
+  if checkPIDfile ; then
+    local pid=`<"$LOCK_FILE" `
+    kill -9 $pid
+    rm $LOCK_FILE
+    rm_except "env_script $RESTORE_FILE"  
+  else
+    rm_except "env_script"  
+  fi
+}
+
+release_env() {
+  log_info "开始释放 ${APP_NAME}"
+  kill_ws
   rm_except "env_script"  
 }
 
@@ -250,7 +273,7 @@ start_env() {
   wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS
   
   # 下载失败则退出
-  [ $? -eq 1 ] && echo "下载失败" && exit 1
+  [ $? -eq 1 ] && project_log_error_exit "下载失败"
   
   # 根据包名匹配对应的部署脚本
   if [[ ${deploy_package} =~ $war_Suffix ]];then
@@ -262,8 +285,7 @@ start_env() {
   elif [[ ${deploy_package} =~ $tar_gz_Suffix ]];then
     deploy_tgz ${deploy_package}
   else 
-    log_info "没有此构建包的部署方式"
-    exit 1
+    project_log_error_exit "没有此构建包的部署方式"
   fi
 
   log_info "Deploy ${deploy_package} completed"
