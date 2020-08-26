@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-26 00:13:59
+ # @LastEditTime: 2020-08-26 09:34:23
  # @LastEditors: robert zhang
  # @Description: 初始化账号配置,需要root权限
  # @  
@@ -13,19 +13,30 @@
 # 例如 curl -X POST -F warName=@env_script.zip -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 http://package.switch.aliyun.com:9090/upload
 # 云效用户组
 YUNXIAO_GOURP=yunxiao
-ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/env_script.zip"
-ENV_SCRIPT="/root/env_script.zip"
+ENV_SCRIPT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
+ENV_SCRIPT="env_script.zip"
+UPLOAD_SCRIPT="curl -X POST -F warName=@env_script.zip -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 http://package.switch.aliyun.com:9090/upload"
+
+# 上传env_script
+upload_env_script() {
+  echo "压缩env_script到/root/${ENV_SCRIPT}"
+  zip -r /root/${ENV_SCRIPT} ./*
+
+  echo "上传: $UPLOAD_SCRIPT"
+  ENV_SCRIPT_ADDRESS=`eval $UPLOAD_SCRIPT`
+}
 
 # 下载env_scropt脚本包
 get_env_script() {
-  wget -nv -O ${ENV_SCRIPT} ${ENV_SCRIPT_URL}
+  echo "下载${ENV_SCRIPT}"
+  wget -nv -O /root/${ENV_SCRIPT} ${ENV_SCRIPT_DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
 }
 
 # 添加sudo组，并设置sudo权限
 add_sudo_group() {
   groupadd ${YUNXIAO_GOURP} >/dev/null 2>&1
   # 设置yunxiao用户组拥有sudo权限，在执行docker命令时不需要密码
-  local add_group_cfg="%${YUNXIAO_GROUP:-yunxiao} ALL=(ALL) NOPASSWD:/usr/bin/docker"
+  local add_group_cfg="%${YUNXIAO_GROUP:-yunxiao} ALL=(ALL) NOPASSWD:/usr/bin/docker,/bin/cp"
   local add_env_cfg='Defaults env_keep += "PATH"'
   grep "^$add_group_cfg" /etc/sudoers > /dev/null
   [ $? -eq 1 ] && echo "$add_group_cfg" >> /etc/sudoers
@@ -37,9 +48,9 @@ add_sudo_group() {
 # 添加脚本到用户家目录
 install_env_script() {
    local username=$1
-   cp $ENV_SCRIPT /home/$username/ 
+   cp /root/$ENV_SCRIPT /home/$username/ 
    chown $1:$1 -R /home/$username/
-   echo "install $ENV_SCRIPT to /home/$username successfully"
+   echo "cp /root/$ENV_SCRIPT to /home/$username successfully"
    for filename in `ls /home/$username`;do
       [ "${filename}" == "env_script.zip" ] && yes| unzip $filename
   done

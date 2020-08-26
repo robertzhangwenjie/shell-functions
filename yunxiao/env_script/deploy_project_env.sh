@@ -23,11 +23,13 @@ ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/env_script.zip"
 update_env_script(){
   echo "starting update env_script"
   echo "clearing env_script"
-  rm -rf env_script* 
+  rm -rf env_script/*
 
   # 下载到指定目录
-  echo "downloading env_script"
+  echo "Try download env_script"
   wget -nv ${ENV_SCRIPT_URL}
+  echo "下载失败，拷贝/root/env_script.zip"
+  sudo cp /root/env_script.zip $HOME
   unzip env_script.zip
 
   # 解压并赋权

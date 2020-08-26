@@ -112,7 +112,7 @@ get_project_antx_properties(){
 # 清理当前用户运行的所有java服务
 kill_ws() {
     log_info "Kill All Web Service"
-    killall -u ${USER} -9 java >>/dev/null 2>&
+    killall -u ${USER} -9 java >/dev/null 2>&1
     sleep 5
 }
 
