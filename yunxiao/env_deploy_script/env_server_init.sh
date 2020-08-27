@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-27 16:28:55
+ # @LastEditTime: 2020-08-27 22:06:48
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -34,8 +34,9 @@ upload_env_script() {
 # 下载env_scropt脚本包
 get_env_script() {
   log_info "downloading ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}"
-  do_it wget -nv -P ${HOME} ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
-  log_info "downloaded successful"
+  wget -nv -P ${HOME} -O ${ENV_SCRIPT} ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
+  [ ! $? -eq 0 ] && log_info "download ${ENV_SCRIPT_ADDRESS} failed"
+  log_info "downloaded ${ENV_SCRIPT} successful"
 }
 
 # 添加sudo权限
