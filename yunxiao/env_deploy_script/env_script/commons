@@ -9,7 +9,8 @@ COMMONS_PATH=$(
 )
 
 # INT -- CTRL + C
-trap 'cancel_deploy;killAllChildren' INT TERM EXIT
+# TERM 要求程序正常退出
+trap 'cancel_deploy;killAllChildren' INT  TERM
 
 # 获取配置项的api
 GET_ANTX_PROPERTIES_URL="https://devops.linewellcloud.com/aenv-config/api/export/exportAntxProperties"
@@ -77,21 +78,21 @@ killAllChildren() {
 
 # 取消部署
 cancel_deploy() {
-  trap - INT TERM EXIT
-  log_warning "canceling kill all services"
+  trap - INT TERM
+  log_warning "canceling deploy service"
   kill_ws
 }
 
 checkPIDfile() {
-  [[ ! -f "$PID_FILE" ]] && return 1
+  [[ ! -f "$PID_FILE" ]] && echo 1
   procpid=$(<"$PID_FILE")
-  [[ -z "$procpid" ]] && return 1
+  [[ -z "$procpid" ]] && echo 1
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
     log_info "Running cmd: $(</proc/$procpid/cmdline)"
-    return 0
+    echo 0
   fi
-  return 1
+  echo 1
 }
 
 createPIDfile() {
@@ -172,7 +173,7 @@ kill_ws() {
   # 清理nginx
   ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
   [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
-  do_it ${NGINX_CMD} -s reload  
+  do_it sudo ${NGINX_CMD} -s reload  
 }
 
 rm_except() {
@@ -204,7 +205,7 @@ clean_work_dir() {
 }
 
 clean_env() {
-  log_info "开始释放 ${APP_NAME}"
+  log_info "清理${APP_NAME}"
   kill_ws
   clean_work_dir
 }
@@ -305,7 +306,7 @@ deploy_tgz() {
 
   # 重启nginx server
   log_info "Restart nginx"
-  eval "${NGINX_CMD} -s reload"
+  eval "sudo ${NGINX_CMD} -s reload"
 }
 
 # 部署docker容器

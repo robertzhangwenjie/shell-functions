@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-27 22:06:48
+ # @LastEditTime: 2020-08-27 22:17:42
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -47,11 +47,11 @@ add_sudo_cfg() {
 
   # 判断是否拥有sudo权限，如果没有就添加
   if [ $isCfgExist -eq 0 ]; then
-    action "Add sudo cfg: $sudo_cfg" /bin/true
+    log_info "add sudo cfg success: $sudo_cfg" 
   else
     echo "$sudo_cfg" >>/etc/sudoers &&
-      action "Add sudo cfg: $sudo_cfg" /bin/true ||
-      action "Add sudo cfg: $sudo_cfg" /bin/false
+      log_info "add sudo cfg success: $sudo_cfg"  ||
+      log_error "add sudo cfg failed: $sudo_cfg" 
   fi
 }
 
