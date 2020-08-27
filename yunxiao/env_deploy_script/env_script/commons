@@ -12,8 +12,13 @@ USER=$(whoami)
 PORT=$(whoami)
 DEPLOY_CMD=""
 
-# 获取nginx家目录
+# 默认nginx家目录
 NGINX_HOME=/usr/install/nginx/
+# 获取当前文件commons的绝对路径
+COMMONS_PATH=$(cd `dirname $0`;pwd)
+# 模板文件夹路径
+NGINX_TEMPLATE_PATH=$COMMONS_PATH/template
+
 rpm -ql nginx >/dev/null 2>&1
 [ $? -eq 0 ] && NGINX_HOME=/etc/nginx
 
@@ -239,7 +244,7 @@ deploy_tgz() {
 
   # 生成nginx配置文件，根据ENV_TYPE.APP_NAME.com作为域名 NGINX_HTML_DIR/APP_NAME作为root
   eval "cat <<EOF 
-  $(<nginx.conf.tpl) 
+  $(< $NGINX_TEMPLATE_PATH) 
   EOF "
   >${NGINX_HOME}/conf/conf.d/${APP_NAME}-${ENV_TYPE}.conf
   # echo $ENV_TYPE | tr [A-Z] [a-z]
