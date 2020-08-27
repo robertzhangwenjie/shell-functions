@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-26 21:46:51
+ # @LastEditTime: 2020-08-27 19:18:46
  # @LastEditors: robert zhang
 # @Description:
 # @
@@ -37,7 +37,7 @@ update_env_script() {
   echo "Try download env_script"
   wget -nv ${ENV_SCRIPT_URL}
   local download=$?
-  if [ $download -eq 1 ]; then
+  if [ ! $download -eq 0 ]; then
     echo "下载失败，尝试拷贝/root/env_script.zip"
     sudo cp /root/env_script.zip $HOME
     if [ $? -eq 0 ]; then
@@ -47,12 +47,12 @@ update_env_script() {
       echo "拷贝失败"
     fi
   else
-    unzip env_script.zip
+    unzip -o env_script.zip
   fi
 
   # 解压并赋权
   echo "unzip env_script successful"
-  chmod u+x -R ${ENV_SCRIPT_PATH}
+  chown -R ${USER}:${USER} /home/${USER}
   echo "update env_script done"
 }
 

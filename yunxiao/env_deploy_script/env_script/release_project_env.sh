@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-26 21:18:01
+ # @LastEditTime: 2020-08-27 21:44:17
  # @LastEditors: robert zhang
  # @Description: 
  # @
@@ -23,6 +23,6 @@ if [ -z $APP_NAME ]; then
 fi
 
 # 释放环境
-release_env
+clear_env
 
 exit 0

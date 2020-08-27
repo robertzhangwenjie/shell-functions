@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-27 15:25:37
+ # @LastEditTime: 2020-08-27 16:28:55
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -25,6 +25,7 @@ source $WORK_PATH/functions.sh
 # 上传env_script
 upload_env_script() {
   log_info "压缩 env_script"
+  chmod 755 -R env_script/*
   do_it zip -qr ${ENV_SCRIPT} env_script/*
   log_info "上传 ${ENV_SCRIPT}"
   ENV_SCRIPT_ADDRESS=`eval $UPLOAD_SCRIPT`

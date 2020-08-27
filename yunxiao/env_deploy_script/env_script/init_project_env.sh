@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-26 21:46:43
+ # @LastEditTime: 2020-08-27 21:43:29
  # @LastEditors: robert zhang
 # @Description: 初始化执行脚本
 # @
@@ -16,9 +16,7 @@ ENV_TYPE=$2
 
 source $HOME/env_script/commons
 
-# 停服务
-kill_ws
 # 清理环境
-clear_env
+clean_env
 
 exit 0

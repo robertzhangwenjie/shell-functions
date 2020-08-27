@@ -1,82 +1,118 @@
 #!/bin/bash
-# 这是一个公共方法脚本
+
+source /etc/rc.d/init.d/functions
+
+# 获取当前文件commons的绝对路径
+COMMONS_PATH=$(
+  cd $(dirname $0)
+  pwd
+)
+
+# INT -- CTRL + C
+trap 'cancel_deploy;killAllChildren' INT TERM EXIT
 
 # 获取配置项的api
 GET_ANTX_PROPERTIES_URL="https://devops.linewellcloud.com/aenv-config/api/export/exportAntxProperties"
-LOCK_FILE=$HOME/${APP_NAME}.pid
+PID_FILE=$HOME/${APP_NAME}.pid
 WORK_DIR=$HOME
 CHECK_URL=""
 RESTORE_FILE=last_deploy_cmd.sh
 RESTORE_FILE_PATH=$HOME/${RESTORE_FILE}
 USER=$(whoami)
 PORT=$(whoami)
-DEPLOY_CMD=""
+# 用来查找pid的字符串
+PID_FIND_STR=""
 
-# 默认nginx家目录
-NGINX_HOME=/usr/install/nginx/
-# 获取当前文件commons的绝对路径
-COMMONS_PATH=$(cd `dirname $0`;pwd)
-# 模板文件夹路径
+# nginx全局变量
+NGINX_HOME=/usr/install/nginx
+NGINX_CONFIG_DIR=$NGINX_HOME/conf/conf.d
 NGINX_TEMPLATE_PATH=$COMMONS_PATH/template
-
+NGINX_CONF=${APP_NAME}-${ENV_TYPE}-${USER}.conf
+NGINX_CMD=${NGINX_HOME}/sbin/nginx
 rpm -ql nginx >/dev/null 2>&1
-[ $? -eq 0 ] && NGINX_HOME=/etc/nginx
 
+if [ $? -eq 0 ]; then
+  NGINX_HOME=/etc/nginx
+  NGINX_CONFIG_DIR=${NGINX_HOME}/conf.d
+  NGINX_CMD=nginx
+fi
 
+# java环境变量
 if [ -z $JAVA_HOME ]; then
   export JAVA_HOME=/usr/install/java8
   export PATH=$PATH:$JAVA_HOME/bin
   export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
 fi
-
-TOMCAT7_VERSION="apache-tomcat-7.0.54"
-TOMCAT7_HOME="/home/${USER}/${TOMCAT7_VERSION}"
-
 # 获取tomcat版本
-TOMCAT_HOME=$TOMCAT7_HOME
-TOMCAT_VERSION=$TOMCAT7_VERSION
+TOMCAT_VERSION="apache-tomcat-7.0.54"
+TOMCAT_HOME="/home/${USER}/${TOMCAT_VERSION}"
+TOMCAT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT_VERSION}.zip"
+TOMCAT_PATH="/usr/install"
+
+
+
+# 执行语句并打印失败或成功
+do_it() {
+  local execute_cmd=$@
+  local ret=$(eval $execute_cmd)
+  local isSuccess=$?
+  if [ $isSuccess -eq 0 ]; then
+    action "$execute_cmd" /bin/true
+    echo $ret
+    return 0
+  else
+    action "$execute_cmd" /bin/false
+    echo $ret
+    return 1
+  fi
+}
 
 # 杀死所有后台进程
-function killAllChildren() {
+killAllChildren() {
   echo "kill all children process..."
   for proc in $(jobs -p); do
     kill -9 $proc
   done
 }
 
-# 清理LOCK_FILE
-function cleanUp() {
+# 取消部署
+cancel_deploy() {
   trap - INT TERM EXIT
-  [[ -f "$LOCK_FILE" ]] && rm "$LOCK_FILE"
+  log_warning "canceling kill all services"
+  kill_ws
 }
 
-# 应用正在部署，如果要杀掉时，则
-# INT -- CTRL + C
-trap 'cleanUp;killAllChildren' INT
-
-function checkPIDfile() {
-  [[ ! -f "$LOCK_FILE" ]] && return 1
-  procpid=$(<"$LOCK_FILE")
+checkPIDfile() {
+  [[ ! -f "$PID_FILE" ]] && return 1
+  procpid=$(<"$PID_FILE")
   [[ -z "$procpid" ]] && return 1
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
-    cat "/proc/$procpid/cmdline" | grep -q deploy_project_env.sh
-    return
+    log_info "Running cmd: $(</proc/$procpid/cmdline)"
+    return 0
   fi
   return 1
 }
 
-function createPIDfile() {
-  if [ -n "$DEPLOY_CMD" ];then
-    mypid=`ps ux | grep "${DEPLOY_CMD}" | grep -v grep | awk '{print $2}'`
-    log_info "create lock_file: $LOCK_FILE"
-    echo "$mypid" >$LOCK_FILE
+createPIDfile() {
+  if [ -n "$PID_FIND_STR" ]; then
+    mypid=$(ps ux | grep "${PID_FIND_STR}" | grep -v grep | awk '{print $2}')
+    log_info "create pid_file: $PID_FILE"
+    echo "$mypid" >$PID_FILE
   fi
-  
+
 }
 
 log_info() {
-  echo "[INFO] $1"
+  echo "$(date +"%Y-%m-%d %H:%M:%S") [INFO] $1"
+}
+
+log_warning() {
+  echo -e "$(date +"%Y-%m-%d %H:%M:%S") \033[33m[WARNING]\033[0m" $1
+}
+
+log_error() {
+  echo -e "$(date +"%Y-%m-%d %H:%M:%S") \033[31m[ERROR]\033[0m" $1
 }
 
 project_log_error_exit() {
@@ -90,7 +126,7 @@ project_log_error_exit() {
 
   [ -f "$HOME/deploy_project_env_${DEPLOY_ID}.log" ] && tail -n 100 $HOME/deploy_project_env_${DEPLOY_ID}.log
   echo "[ERROR] $error_message"
-  rm -rf $LOCK_FILE
+  rm -rf $PID_FILE
   exit 1
 }
 
@@ -119,11 +155,24 @@ get_project_antx_properties() {
 
 }
 
-# 清理当前用户运行的所有java服务
+# 清理当前用户运行的所有服务
 kill_ws() {
-  log_info "Kill All Web Service"
-  killall -u ${USER} -9 java >/dev/null 2>&1
-  sleep 5
+
+  if [ $checkPIDfile -eq 0 ]; then
+    local mypid=$(<$PID_FILE)
+    log_info "kill -9 $mypid"
+    do_it kill -9 $mypid
+    rm "$PID_FILE"
+  fi
+
+  # 清理docker
+  sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
+  [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${CRID}
+
+  # 清理nginx
+  ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
+  [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
+  do_it ${NGINX_CMD} -s reload  
 }
 
 rm_except() {
@@ -143,29 +192,25 @@ rm_except() {
   done
 }
 
-# 清理环境
-clear_env() {
-
+# 清理环境,删除相关文件
+clean_work_dir() {
   log_info "starting clear $WORK_DIR"
   # 杀掉上一次的部署
-  if checkPIDfile; then
-    local pid=$(<"$LOCK_FILE")
-    kill -9 $pid
-    rm $LOCK_FILE
+  if [ "$NEED_RESTORE" == "yes" ]; then
     rm_except "env_script $RESTORE_FILE"
   else
     rm_except "env_script"
   fi
 }
 
-release_env() {
+clean_env() {
   log_info "开始释放 ${APP_NAME}"
   kill_ws
-  rm_except "env_script"
+  clean_work_dir
 }
 
 # 检查部署是否成功
-after_check() {
+check_url() {
   log_info "开始检查部署是否成功"
 
   if [ "$CHECK_URL"x == ""x ]; then
@@ -180,33 +225,28 @@ after_check() {
 
   while true; do
     ((count++))
-    [[ $count -gt ${max_check_num} ]] && project_log_error_exit "Failed to check app with url: $check_url .Please go to the server to check the application's startup log."
+    [[ $count -gt ${max_check_num} ]] && project_log_error_exit "Failed to check app with url: $check_url.\n
+      Please go to the server to check the application's startup log."
 
     log_info "try $count times"
     local resp_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 $check_url)
     [[ "$resp_code" == "200" ]] && break
+    sleep 3
   done
 
   log_info "$check_url return 200"
-
-  check_port=$(netstat -an | grep -w ${PORT})
-  log_info "check_port : ${check_port}"
-  if [[ "${#check_port}" -eq 0 ]]; then
-    #log_info "no CHECK_URL, do not check status, return success!"
-    log_info "No CHECK_URL,Please add CHECK_URL "
-  else
-    log_info "No CHECK_URL,But request port ${PORT} is successful.Please confirm again"
-  fi
 }
 
 # 部署war包
 deploy_war() {
-  local deploy_package=$1
-  log_info "下载tomcat解压包"
-  wget -nv "http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT_VERSION}.zip"
-  unzip ${TOMCAT_VERSION}.zip
-  log_info "Starting deploy $deploy_package"
 
+  local deploy_package=$1
+  log_info "获取${TOMCAT7_VERSION}.zip"
+  wget -P ${HOEM} -nv ${TOMCAT_DOWNLOAD_URL} ||
+    cp ${TOMCAT_PATH}/${TOMCAT_VERSION}.zip ${HOME}
+  unzip ${HOME}/${TOMCAT_VERSION}.zip
+
+  log_info "Starting deploy $deploy_package"
   #PORT1/2/3是tomcat的其他端口
   MINUS=$(expr 8080 - $PORT)
   PORT1=$(expr 8443 - $MINUS)
@@ -214,13 +254,18 @@ deploy_war() {
   PORT3=$(expr 8005 - $MINUS + 20)
 
   # 修改tomcat配置文件
+  log_info "修改tomcat配置：PORT:${PORT}"
   cd $TOMCAT_HOME/conf
   sed -i "s/8080/$PORT/g" server.xml
   sed -i "s/8443/$PORT1/g" server.xml
   sed -i "s/8009/$PORT2/g" server.xml
   sed -i "s/8005/$PORT3/g" server.xml
-  echo "$PORT1"
+
+  # 设置查找该pid的命令
+  PID_FIND_STR="${TOMCAT_VERSION}"
+  log_info "启动tomcat"
   cd $TOMCAT_HOME/bin
+
   chmod 755 *.sh
   sh startup.sh
   sleep 3
@@ -231,8 +276,8 @@ deploy_war() {
 deploy_jar() {
   local deploy_package=$1
   log_info "Starting deploy $deploy_package"
-  DEPLOY_CMD="java -jar $deploy_package"
-  nohup $DEPLOY_CMD 2>&1 &
+  PID_FIND_STR="java -jar $deploy_package"
+  nohup java -jar $deploy_package 2>&1 &
 
   return
 }
@@ -243,11 +288,11 @@ deploy_tgz() {
   log_info "Starting deploy ${deploy_package}"
 
   # 生成nginx配置文件，根据ENV_TYPE.APP_NAME.com作为域名 NGINX_HTML_DIR/APP_NAME作为root
+  log_info "generate nginx config"
   eval "cat <<EOF 
-  $(< $NGINX_TEMPLATE_PATH) 
+  $(<$NGINX_TEMPLATE_PATH) 
   EOF "
-  >${NGINX_HOME}/conf/conf.d/${APP_NAME}-${ENV_TYPE}.conf
-  # echo $ENV_TYPE | tr [A-Z] [a-z]
+  >${NGINX_CONFIG_DIR}/$NGINX_CONF
 
   # 部署目录
   # deploy_dir=${NGINX_HOME}/html/${APP_NAME}/
@@ -255,12 +300,12 @@ deploy_tgz() {
   # [ -d ${deploy_dir} ] && rm -rf ${deploy_dir}
   # tar -xvf ${deploy_package} -C  ${deploy_dir} > /dev/null 2>&1
 
-  log_info "解压部署包"
+  log_info "解压部署包${deploy_package}到${HOME}"
   tar -xvf ${deploy_package} -C ${HOME}
 
   # 重启nginx server
   log_info "Restart nginx"
-  eval "${NGINX_HOME}/sbin/nginx -s reload"
+  eval "${NGINX_CMD} -s reload"
 }
 
 # 部署docker容器
@@ -272,10 +317,10 @@ deploy_docker() {
   CONTAINER_PORT=${container_port:-${PORT}}
   log_info "PORT:${PORT},CONTAINER_PORT:${CONTAINER_PORT}"
   # 判断是否正在部署
-  docker ps -a | grep nginx-test
-  [ $? -eq 0 ] && sudo docker rm -f ${APP_NAME}-${CRID}
+  sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
+  [ $? -eq 0 ] && sudo docker rm -f ${APP_NAME}-${ENV_TYPE}
   # 部署的容器名称为应用名-项目名
-  sudo docker run -d --name ${APP_NAME}-${CRID} -p ${PORT}:${CONTAINER_PORT} $imageName
+  sudo docker run -d --name ${APP_NAME}-${ENV_TYPE} -p ${PORT}:${CONTAINER_PORT} $imageName
 }
 
 # 开始部署
@@ -313,6 +358,6 @@ start_env() {
   else
     project_log_error_exit "没有此构建包的部署方式"
   fi
-  
+
   log_info "Deploy ${deploy_package} completed"
 }
