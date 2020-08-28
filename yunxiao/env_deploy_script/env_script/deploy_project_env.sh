@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-28 18:16:27
+ # @LastEditTime: 2020-08-28 22:26:15
  # @LastEditors: robert zhang
 # @Description:
 # @
@@ -29,8 +29,7 @@ DEPLOY_ID=$6
 
 ENV_SCRIPT_PATH="$HOME/env_script"
 ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/0/yunxiao/ATON_INTEGRATION/1/1/env_script.zip"
-ENV_SCRIPT="env_script.zip""
-
+ENV_SCRIPT="env_script.zip"
 
 update_env_script() {
   cd ${HOME}
@@ -79,8 +78,8 @@ if [ "x$ENV_TYPE" = "x" ]; then
 fi
 
 # 检查部署包是否传递
-if [ -z ${TAR_ADDRESS} ]; then
-  echo -n -e "\e[0;32;1mDeployPackage should not be empty\e[0m"
+if [ -z "${TAR_ADDRESS}" ]; then
+  log_error "deployPackage cannot be empty"
   exit 1
 fi
 

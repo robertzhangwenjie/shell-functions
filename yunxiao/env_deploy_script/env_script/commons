@@ -59,14 +59,19 @@ checkPIDfile() {
 createPIDfile() {
   if [ -n "$PID_FIND_STR" ]; then
     mypid=$(ps ux | grep "${PID_FIND_STR}" | grep -v grep | awk '{print $2}')
-    log_info "create pid_file: $PID_FILE"
-    echo "$mypid" >$PID_FILE
+    if [ $? -eq 0 ]; then
+      echo "$mypid" >$PID_FILE
+      log_info "create pid_file: $PID_FILE, PID:$mypid"
+      retun 0
+    else
+      project_log_error_exit "deploy failed for cannot find pid with ${PID_FIND_STR}"
+    fi
   fi
 
 }
 
 log_info() {
-  echo "$(date +"%Y-%m-%d %H:%M:%S") [INFO] $1"
+  echo -e "$(date +"%Y-%m-%d %H:%M:%S") [INFO] $1"
 }
 
 log_warning() {
@@ -103,6 +108,7 @@ get_project_antx_properties() {
 
   # 将当前环境的配置项设置为环境变量
   if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]]; then
+    echo '#!/bin/bash' >$ENV_PROPERTIES_FILE
     cat $HOME/antx.properties.$APP_NAME.$ENV_TYPE | while read line; do
       origin_key=$(echo $line | awk -F"=" '{print $1}')
       key=$(eval echo $origin_key)
@@ -110,8 +116,7 @@ get_project_antx_properties() {
       value=$(eval echo $origin_value)
 
       log_info "Set env variable:$key=$value"
-      echo "export $key=$value" >>env.properties.$APP_NAME.$ENV_TYPE
-      source env.properties.$APP_NAME.$ENV_TYPE
+      echo "$key=$value" >>$ENV_PROPERTIES_FILE
     done
   fi
 
@@ -120,12 +125,15 @@ get_project_antx_properties() {
 # 清理当前用户运行的所有服务
 kill_ws() {
 
-  log_info "清理java服务以及PIDfile"
+  log_info "清理java服务"
   checkPIDfile
   if [ $? -eq 0 ]; then
     local mypid=$(<$PID_FILE)
     log_info "kill -9 $mypid"
     do_it kill -9 $mypid
+  else
+    log_info "killall -u ${USER} -9 java"
+    killall -u ${USER} -9 java
   fi
   rm "$PID_FILE"
 
@@ -136,9 +144,14 @@ kill_ws() {
 
   # 清理nginx
   log_info "清理nginx"
-  ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
-  [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
-  do_it sudo ${NGINX_CMD} -s reload
+  pidofproc nginx
+  if [ $? -eq 0 ];then
+    ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
+    [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
+    do_it sudo ${NGINX_CMD} -s reload
+    log_info "清理完成，并已重启nginx"
+  else 
+    log_info "未发现nginx进程正在运行"
 }
 
 rm_except() {
@@ -251,8 +264,7 @@ deploy_jar() {
   PID_FIND_STR="java -jar $deploy_package"
 
   log_info "nohup java -jar $deploy_package 2>&1 &"
-  nohup java -jar $deploy_package 2>&1 &
-  sleep 3
+  nohup java -jar $deploy_package >${APPNAME}.log 2>&1 &
 }
 
 # 部署.tar.gz包
@@ -299,6 +311,7 @@ deploy_docker() {
 # 开始部署
 start_env() {
 
+  # 加载配置项作为全局变量
   war_Suffix=".war"
   jar_Suffix=".jar"
   tar_gz_Suffix=".tar.gz"
@@ -320,6 +333,9 @@ start_env() {
   # 下载失败则退出
   [ $? -eq 1 ] && project_log_error_exit "下载失败"
 
+  # 加载配置作为全局变量
+  log_info "加载配置项\n: $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
+
   # 根据包名匹配对应的部署脚本
   if [[ ${deploy_package} =~ $war_Suffix ]]; then
     deploy_war ${deploy_package}
@@ -332,6 +348,7 @@ start_env() {
   else
     project_log_error_exit "没有此构建包的部署方式"
   fi
-
+  # 部署完成后等待5s继续执行
+  sleep 5
   log_info "Deploy ${deploy_package} finished"
 }

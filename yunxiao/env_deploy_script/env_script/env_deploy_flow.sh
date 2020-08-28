@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-28 17:06:06
+ # @LastEditTime: 2020-08-28 22:38:25
  # @LastEditors: robert zhang
  # @Description: 
  # @
@@ -42,9 +42,11 @@ RESTORE_FILE=last_deploy_cmd.sh
 RESTORE_FILE_PATH=$HOME/${RESTORE_FILE}
 USER=$(whoami)
 PORT=$(whoami)
+ENV_PROPERTIES_FILE="${HOME}/env.properties.${APP_NAME}.${ENV_TYPE}"
+
 
 # 日志配置
-LOG_DIR="logs"
+LOG_DIR=logs
 
 # 用来查找pid的字符串
 PID_FIND_STR=""
