@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-27 21:52:09
+ # @LastEditTime: 2020-08-28 09:56:51
  # @LastEditors: robert zhang
  # @Description: 
  # @
@@ -35,7 +35,7 @@ start_env
 createPIDfile
 
 # 检查部署是否成功
-check_url
+check_deploy_status
 
 # 部署成功，记录本次部署命令
 echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH

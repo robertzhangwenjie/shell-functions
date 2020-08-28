@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-28 00:13:30
+ # @LastEditTime: 2020-08-28 09:19:42
  # @LastEditors: robert zhang
 # @Description:
 # @
@@ -28,14 +28,14 @@ NEED_RESTORE=$5
 DEPLOY_ID=$6
 
 ENV_SCRIPT_PATH="$HOME/env_script"
-ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/env_script.zip"
+ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/0/yunxiao/ATON_INTEGRATION/1/1/env_script.zip"
 
 
 update_env_script() {
   cd ${HOME}
   log_info "starting update env_script"
   log_info "clearing env_script"
-  do_it rm -rf env_script/*
+  do_it rm -rf env_script
 
   # 下载到指定目录
   log_info "Try download env_script"

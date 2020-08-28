@@ -10,7 +10,7 @@ COMMONS_PATH=$(
 
 # INT -- CTRL + C
 # TERM 要求程序正常退出
-trap 'cancel_deploy;killAllChildren' INT  TERM
+trap 'cancel_deploy;killAllChildren' INT TERM
 
 # 获取配置项的api
 GET_ANTX_PROPERTIES_URL="https://devops.linewellcloud.com/aenv-config/api/export/exportAntxProperties"
@@ -50,8 +50,6 @@ TOMCAT_HOME="/home/${USER}/${TOMCAT_VERSION}"
 TOMCAT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT_VERSION}.zip"
 TOMCAT_PATH="/usr/install"
 
-
-
 # 执行语句并打印失败或成功
 do_it() {
   local execute_cmd=$@
@@ -84,15 +82,15 @@ cancel_deploy() {
 }
 
 checkPIDfile() {
-  [[ ! -f "$PID_FILE" ]] && echo 1
+  [[ ! -f "$PID_FILE" ]] && return 1
   procpid=$(<"$PID_FILE")
-  [[ -z "$procpid" ]] && echo 1
+  [[ -z "$procpid" ]] && return 1
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
     log_info "Running cmd: $(</proc/$procpid/cmdline)"
-    echo 0
+    return 0
   fi
-  echo 1
+  return 1
 }
 
 createPIDfile() {
@@ -132,11 +130,11 @@ project_log_error_exit() {
 }
 
 get_project_antx_properties() {
-  if [ -z $APP_NAME ] || [ -z $ENV_TYPE ]; then
-    return 0
+  if [ -z "$APP_NAME" ] || [ -z "$ENV_TYPE" ]; then
+    project_log_error_exit "appNme and envType cannot be empty"
   fi
 
-  log_info "Get antx properties : \"$GET_ANTX_PROPERTIES_URL?appId=$ENV_ID&appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
+  log_info "Get antx properties : \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
   rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
   curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
 
@@ -159,7 +157,8 @@ get_project_antx_properties() {
 # 清理当前用户运行的所有服务
 kill_ws() {
 
-  if [ $checkPIDfile -eq 0 ]; then
+  checkPIDfile
+  if [ $? -eq 0 ]; then
     local mypid=$(<$PID_FILE)
     log_info "kill -9 $mypid"
     do_it kill -9 $mypid
@@ -173,7 +172,7 @@ kill_ws() {
   # 清理nginx
   ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
   [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
-  do_it sudo ${NGINX_CMD} -s reload  
+  do_it sudo ${NGINX_CMD} -s reload
 }
 
 rm_except() {
@@ -210,9 +209,16 @@ clean_env() {
   clean_work_dir
 }
 
-# 检查部署是否成功
+# 检查部署状态
+check_deploy_status() {
+  checkPIDfile
+  [ $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
+  check_url 
+} 
+
+# 检查url是否可以访问
 check_url() {
-  log_info "开始检查部署是否成功"
+  log_info "starting check if can access with url: ${CHECK_URL}"
 
   if [ "$CHECK_URL"x == ""x ]; then
     log_info "无检查URL"
@@ -278,9 +284,10 @@ deploy_jar() {
   local deploy_package=$1
   log_info "Starting deploy $deploy_package"
   PID_FIND_STR="java -jar $deploy_package"
-  nohup java -jar $deploy_package 2>&1 &
 
-  return
+  log_info "nohup java -jar $deploy_package 2>&1 &"
+  nohup java -jar $deploy_package 2>&1 &
+  sleep 3
 }
 
 # 部署.tar.gz包
@@ -326,6 +333,7 @@ deploy_docker() {
 
 # 开始部署
 start_env() {
+
   war_Suffix=".war"
   jar_Suffix=".jar"
   tar_gz_Suffix=".tar.gz"
