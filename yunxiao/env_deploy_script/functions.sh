@@ -1,12 +1,12 @@
 #!/bin/bash
 ###
- # @Author: robert zhang
- # @Date: 2020-08-27 09:36:23
- # @LastEditTime: 2020-08-27 16:10:06
+# @Author: robert zhang
+# @Date: 2020-08-27 09:36:23
+ # @LastEditTime: 2020-08-28 14:27:48
  # @LastEditors: robert zhang
- # @Description: 部署脚本公共函数
- # @
-### 
+# @Description: 部署脚本公共函数
+# @
+###
 source /etc/rc.d/init.d/functions
 
 log_info() {
@@ -24,14 +24,14 @@ log_error() {
 # 执行语句并打印失败或成功
 do_it() {
   local execute_cmd=$@
-  local ret=`eval $execute_cmd`
+  local ret=$($execute_cmd)
   local isSuccess=$?
-  if [ $isSuccess -eq 0 ];then
-    action "$execute_cmd"  /bin/true
+  if [ $isSuccess -eq 0 ]; then
+    action "$execute_cmd" /bin/true
     echo $ret
     return 0
   else
-    action "$execute_cmd"  /bin/false
+    action "$execute_cmd" /bin/false
     echo $ret
     return 1
   fi

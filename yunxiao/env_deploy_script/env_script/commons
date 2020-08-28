@@ -1,18 +1,19 @@
 #!/bin/bash
 
 source /etc/rc.d/init.d/functions
+source /etc/profile
 
 # 执行语句并打印失败或成功
 do_it() {
   local execute_cmd=$@
-  local ret=$(eval $execute_cmd)
+  local ret=$($execute_cmd)
   local isSuccess=$?
   if [ $isSuccess -eq 0 ]; then
-    action "$execute_cmd" /bin/true
+    action "$execute_cmd" true
     echo $ret
     return 0
   else
-    action "$execute_cmd" /bin/false
+    action "$execute_cmd" false
     echo $ret
     return 1
   fi
@@ -34,12 +35,22 @@ cancel_deploy() {
 }
 
 checkPIDfile() {
-  [[ ! -f "$PID_FILE" ]] && return 1
+  log_info "检查PID是否正常"
+  if [ ! -e "$PID_FILE" ]; then
+    log_warning "PID_FILE不存在"
+    return 1
+  fi
+
   procpid=$(<"$PID_FILE")
-  [[ -z "$procpid" ]] && return 1
+  if [[ -z "$procpid" ]]; then
+    log_warning "PID_FILE为空"
+    return 1
+  fi
+
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
     log_info "Running cmd: $(</proc/$procpid/cmdline)"
+    log_info "PID检查正常"
     return 0
   fi
   return 1
@@ -76,7 +87,7 @@ project_log_error_exit() {
   fi
 
   [ -f "$HOME/deploy_project_env_${DEPLOY_ID}.log" ] && tail -n 100 $HOME/deploy_project_env_${DEPLOY_ID}.log
-  echo "[ERROR] $error_message"
+  log_error " $error_message"
   rm -rf $PID_FILE
   exit 1
 }
@@ -115,8 +126,8 @@ kill_ws() {
     local mypid=$(<$PID_FILE)
     log_info "kill -9 $mypid"
     do_it kill -9 $mypid
-    rm "$PID_FILE"
   fi
+  rm "$PID_FILE"
 
   # 清理docker
   log_info "清理docker服务"
@@ -124,7 +135,7 @@ kill_ws() {
   [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${CRID}
 
   # 清理nginx
-  log_info ""
+  log_info "清理nginx"
   ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
   [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
   do_it sudo ${NGINX_CMD} -s reload
@@ -156,6 +167,7 @@ clean_work_dir() {
   else
     rm_except "env_script env_script.zip"
   fi
+  mkdir ${HOME}/${LOG_DIR}
 }
 
 clean_env() {
@@ -167,18 +179,17 @@ clean_env() {
 # 检查部署状态
 check_deploy_status() {
   checkPIDfile
-  [ $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
-  check_url 
-} 
+  [ ! $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
+  check_url
+}
 
 # 检查url是否可以访问
 check_url() {
-  log_info "starting check if can access with url: ${CHECK_URL}"
-
   if [ "$CHECK_URL"x == ""x ]; then
-    log_info "无检查URL"
+    log_info "无check_url，跳过url检测"
     return
   fi
+  log_info "starting check with url: ${CHECK_URL}"
 
   check_url=$CHECK_URL
   log_info "Starting check $APP_NAME with url: $check_url"
@@ -323,5 +334,5 @@ start_env() {
     project_log_error_exit "没有此构建包的部署方式"
   fi
 
-  log_info "Deploy ${deploy_package} completed"
+  log_info "Deploy ${deploy_package} finished"
 }

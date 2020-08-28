@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-28 14:07:39
+ # @LastEditTime: 2020-08-28 16:38:29
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -57,10 +57,9 @@ add_sudo_cfg() {
 
 # 注释掉配置项
 del_sudo_cfg() {
-
   # 匹配不以#开头的配置项，然后添加#
   log_info "注释掉$1所在的行"
-  do_it sed "s/^[^#].*$1$/#&/g" /etc/sudoers 
+  sed -i "s/^[^#].*$1$/#&/g" /etc/sudoers 
   
 }
 
@@ -79,17 +78,17 @@ add_sudo_group() {
   # 传递换进变量到sudo账户
   local add_env_cfg='Defaults env_keep += "PATH"'
   # tty设置,适合sudo-1.6.9-1.7.2
-  local del_tty_cfg='requiretty'
+  local del_tty_cfg1='requiretty'
   # tty设置，适合sudo-1.7.2+
   local add_tty_cfg='Defaults visiblepw'
-  local del_tty_cfg='!visiblepw'
+  local del_tty_cfg2='!visiblepw'
 
 
   add_sudo_cfg $add_group_cfg
   add_sudo_cfg $add_env_cfg
   add_sudo_cfg $add_tty_cfg
-  del_sudo_cfg $del_tty_cfg
-  del_sudo_cfg $del_tty_cfg
+  del_sudo_cfg $del_tty_cfg1
+  del_sudo_cfg $del_tty_cfg2
 
   # 还原"!"执行历史功能
   set -H

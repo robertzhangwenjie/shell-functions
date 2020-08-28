@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-28 09:19:42
+ # @LastEditTime: 2020-08-28 18:16:27
  # @LastEditors: robert zhang
 # @Description:
 # @
@@ -29,6 +29,7 @@ DEPLOY_ID=$6
 
 ENV_SCRIPT_PATH="$HOME/env_script"
 ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/0/yunxiao/ATON_INTEGRATION/1/1/env_script.zip"
+ENV_SCRIPT="env_script.zip""
 
 
 update_env_script() {
@@ -39,7 +40,7 @@ update_env_script() {
 
   # 下载到指定目录
   log_info "Try download env_script"
-  wget -nv ${ENV_SCRIPT_URL}
+  wget -nv -O ${ENV_SCRIPT} ${ENV_SCRIPT_URL}
   local download=$?
   if [ ! $download -eq 0 ]; then
     log_warning "下载失败，尝试拷贝/root/env_script.zip"
@@ -84,7 +85,6 @@ if [ -z ${TAR_ADDRESS} ]; then
 fi
 
 # 更新部署脚本
-log_info "starting update_env_script"
 update_env_script
 
 #项目环境部署，必要参数：$APP_NAME $CRID

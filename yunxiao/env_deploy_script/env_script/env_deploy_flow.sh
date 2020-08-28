@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-28 14:19:05
+ # @LastEditTime: 2020-08-28 17:06:06
  # @LastEditors: robert zhang
  # @Description: 
  # @
@@ -43,6 +43,9 @@ RESTORE_FILE_PATH=$HOME/${RESTORE_FILE}
 USER=$(whoami)
 PORT=$(whoami)
 
+# 日志配置
+LOG_DIR="logs"
+
 # 用来查找pid的字符串
 PID_FIND_STR=""
 
@@ -75,19 +78,19 @@ TOMCAT_PATH="/usr/install"
 
 
 # 清理环境
-do_it clean_env
+clean_env
 
 # 获取当前环境的部署配置项
-do_it get_project_antx_properties
+get_project_antx_properties
 
 # 启动环境，开始部署
-do_it start_env
+start_env
 
 # 创建pid文件
-do_it createPIDfile
+createPIDfile
 
 # 检查部署是否成功
-do_it check_deploy_status
+check_deploy_status
 
 # 部署成功，记录本次部署命令
 echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH
