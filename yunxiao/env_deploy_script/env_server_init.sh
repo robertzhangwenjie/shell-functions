@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-28 13:28:00
+ # @LastEditTime: 2020-08-28 14:07:39
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -75,18 +75,20 @@ add_sudo_group() {
 
   log_info "设置sudo权限"
   # 添加sudo账户的权限
-  local add_group_cfg="%${YUNXIAO_GROUP:-yunxiao} ALL=(ALL) NOPASSWD:/usr/bin/docker,/bin/cp"
+  local add_group_cfg="%${YUNXIAO_GROUP:-yunxiao} ALL=(ALL) NOPASSWD:/usr/bin/docker,/bin/cp,/usr/sbin/nginx"
   # 传递换进变量到sudo账户
   local add_env_cfg='Defaults env_keep += "PATH"'
   # tty设置,适合sudo-1.6.9-1.7.2
-  local add_tty_cfg1='Defaults requiretty'
+  local del_tty_cfg='requiretty'
   # tty设置，适合sudo-1.7.2+
-  local add_tty_cfg2='Defaults visiblepw'
+  local add_tty_cfg='Defaults visiblepw'
   local del_tty_cfg='!visiblepw'
 
 
   add_sudo_cfg $add_group_cfg
   add_sudo_cfg $add_env_cfg
+  add_sudo_cfg $add_tty_cfg
+  del_sudo_cfg $del_tty_cfg
   del_sudo_cfg $del_tty_cfg
 
   # 还原"!"执行历史功能

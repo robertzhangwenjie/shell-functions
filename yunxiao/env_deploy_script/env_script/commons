@@ -2,54 +2,6 @@
 
 source /etc/rc.d/init.d/functions
 
-# 获取当前文件commons的绝对路径
-COMMONS_PATH=$(
-  cd $(dirname $0)
-  pwd
-)
-
-# INT -- CTRL + C
-# TERM 要求程序正常退出
-trap 'cancel_deploy;killAllChildren' INT TERM
-
-# 获取配置项的api
-GET_ANTX_PROPERTIES_URL="https://devops.linewellcloud.com/aenv-config/api/export/exportAntxProperties"
-PID_FILE=$HOME/${APP_NAME}.pid
-WORK_DIR=$HOME
-CHECK_URL=""
-RESTORE_FILE=last_deploy_cmd.sh
-RESTORE_FILE_PATH=$HOME/${RESTORE_FILE}
-USER=$(whoami)
-PORT=$(whoami)
-# 用来查找pid的字符串
-PID_FIND_STR=""
-
-# nginx全局变量
-NGINX_HOME=/usr/install/nginx
-NGINX_CONFIG_DIR=$NGINX_HOME/conf/conf.d
-NGINX_TEMPLATE_PATH=$COMMONS_PATH/template
-NGINX_CONF=${APP_NAME}-${ENV_TYPE}-${USER}.conf
-NGINX_CMD=${NGINX_HOME}/sbin/nginx
-rpm -ql nginx >/dev/null 2>&1
-
-if [ $? -eq 0 ]; then
-  NGINX_HOME=/etc/nginx
-  NGINX_CONFIG_DIR=${NGINX_HOME}/conf.d
-  NGINX_CMD=nginx
-fi
-
-# java环境变量
-if [ -z $JAVA_HOME ]; then
-  export JAVA_HOME=/usr/install/java8
-  export PATH=$PATH:$JAVA_HOME/bin
-  export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
-fi
-# 获取tomcat版本
-TOMCAT_VERSION="apache-tomcat-7.0.54"
-TOMCAT_HOME="/home/${USER}/${TOMCAT_VERSION}"
-TOMCAT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT_VERSION}.zip"
-TOMCAT_PATH="/usr/install"
-
 # 执行语句并打印失败或成功
 do_it() {
   local execute_cmd=$@
@@ -157,6 +109,7 @@ get_project_antx_properties() {
 # 清理当前用户运行的所有服务
 kill_ws() {
 
+  log_info "清理java服务以及PIDfile"
   checkPIDfile
   if [ $? -eq 0 ]; then
     local mypid=$(<$PID_FILE)
@@ -166,10 +119,12 @@ kill_ws() {
   fi
 
   # 清理docker
+  log_info "清理docker服务"
   sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
   [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${CRID}
 
   # 清理nginx
+  log_info ""
   ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
   [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
   do_it sudo ${NGINX_CMD} -s reload
@@ -197,14 +152,14 @@ clean_work_dir() {
   log_info "starting clear $WORK_DIR"
   # 杀掉上一次的部署
   if [ "$NEED_RESTORE" == "yes" ]; then
-    rm_except "env_script $RESTORE_FILE"
+    rm_except "env_script env_script.zip $RESTORE_FILE"
   else
-    rm_except "env_script"
+    rm_except "env_script env_script.zip"
   fi
 }
 
 clean_env() {
-  log_info "清理${APP_NAME}"
+  log_info "开始清理环境"
   kill_ws
   clean_work_dir
 }
