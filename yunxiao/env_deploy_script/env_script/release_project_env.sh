@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-27 21:44:17
+ # @LastEditTime: 2020-08-28 18:23:46
  # @LastEditors: robert zhang
  # @Description: 
  # @
@@ -24,5 +24,8 @@ fi
 
 # 释放环境
 clear_env
+
+# 删除log目录
+rm -rf ${HOME}/logs
 
 exit 0

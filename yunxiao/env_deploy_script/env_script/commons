@@ -163,11 +163,10 @@ clean_work_dir() {
   log_info "starting clear $WORK_DIR"
   # 杀掉上一次的部署
   if [ "$NEED_RESTORE" == "yes" ]; then
-    rm_except "env_script env_script.zip $RESTORE_FILE"
+    rm_except "env_script env_script.zip $RESTORE_FILE logs"
   else
-    rm_except "env_script env_script.zip"
+    rm_except "env_script env_script.zip logs"
   fi
-  mkdir ${HOME}/${LOG_DIR}
 }
 
 clean_env() {

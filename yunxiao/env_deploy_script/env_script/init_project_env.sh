@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-27 21:43:29
+ # @LastEditTime: 2020-08-28 18:22:47
  # @LastEditors: robert zhang
 # @Description: 初始化执行脚本
 # @
@@ -13,10 +13,17 @@
 
 APP_NAME=$1
 ENV_TYPE=$2
+#根据agent的日志配置项决定
+LOG_DIR=logs
 
 source $HOME/env_script/commons
 
 # 清理环境
 clean_env
+
+# 创建log目录
+[ -d "$LOG_DIR" ] && rm -rf $LOG_DIR/*
+
+mkdir $LOG_DIR
 
 exit 0
