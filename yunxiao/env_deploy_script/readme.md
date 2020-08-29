@@ -2,7 +2,7 @@
 
 ### 使用步骤
 
-1. 修改 `env_script/conf/env.cfg`中的配置参数
+1. 修改 `env_server_init.sh`中的配置参数
     ```shell
     UPLOAD_URL="http://package.switch.aliyun.com:9090/upload" #上传包的api
     DOWNLOAD_URL="http://package.switch.aliyun.com:8088"  #下载包的api
