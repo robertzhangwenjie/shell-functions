@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-29 16:00:12
+ # @LastEditTime: 2020-08-29 23:12:21
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -29,14 +29,20 @@ ENV_TYPE=$3
 TAR_ADDRESS=$4
 NEED_RESTORE=$5
 DEPLOY_ID=$6
+CHECK_URL=$7
+
 
 source ${ENV_SCRIPT_PATH}/commons
-source ${ENV_SCRIPT_PATH}/conf/env_cfg
+source ${ENV_SCRIPT_PATH}/conf/env.cfg
 
 # INT -- CTRL + C
 # TERM 要求程序正常退出
-trap 'cancel_deploy;killAllChildren' INT TERM
+trap 'cancel_deploy;killAllChildren' INT TERM HUP
 
+# 检查是否有传递CHECK_URL,如果传入的值是1，则表示为空
+if [ "$CHECK_URL" == 1 ]; then
+  CHECK_URL=""
+fi
 
 
 # 检查应用名
@@ -78,10 +84,17 @@ start_env
 # 创建pid文件
 createPIDfile
 
+# 等待10s检查部署状态
+sleep 10
+
 # 检查部署是否成功
 check_deploy_status
 
 # 部署成功，记录本次部署命令
 echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH
-log_info "部署成功"
+
+# 获取应用日志
+get_app_log
+
+action "应用部署成功" /bin/true
 exit 0

@@ -1,14 +1,11 @@
 ## env部署脚本说明
 
-
 ### 使用步骤
 
-1. 修改 `env_server_init.sh`中的配置
+1. 修改 `env_script/conf/env.cfg`中的配置参数
 ```shell
-  YUNXIAO_GOURP=yunxia
   UPLOAD_URL="http://package.switch.aliyun.com:9090/upload" #上传api地址
   DOWNLOAD_URL="http://package.switch.aliyun.com:8088"  #下载api地址
-  ENV_SCRIPT="env_script.zip"
   UPLOAD_SCRIPT="curl -X POST -F warName=@${ENV_SCRIPT} -F crid=0 -F appName=yunxiao -F buildNum=1 -F compileId=1 ${UPLOAD_URL}" # 上传命令
  
 ```

@@ -30,7 +30,7 @@ killAllChildren() {
 
 # 取消部署
 cancel_deploy() {
-  trap - INT TERM
+  trap - INT TERM HUP
   log_warning "canceling deploy service"
   kill_ws
 }
@@ -50,8 +50,7 @@ checkPIDfile() {
 
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
-    log_info "Running cmd: $(</proc/$procpid/cmdline)"
-    log_info "PID检查正常"
+    log_info "PID检查正常，正在运行: $(</proc/$procpid/cmdline)"
     return 0
   fi
   return 1
@@ -150,13 +149,18 @@ kill_ws() {
   [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${CRID}
 
   # 清理nginx
-  log_info "清理nginx"
+  log_info "开始清理nginx"
   pidofproc nginx
   if [ $? -eq 0 ]; then
+    # 查看是否有该应用程序配置
     ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
-    [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
-    do_it sudo ${NGINX_CMD} -s reload
-    log_info "清理完成，并已重启nginx"
+    if [ $? -eq 0 ]; then
+      rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
+      do_it sudo ${NGINX_CMD} -s reload
+      log_info "清理完成，并已重启nginx"
+    else
+      log_info "未发现该应用程序的nginx配置文件"
+    fi
   else
     log_info "未发现nginx进程正在运行"
   fi
@@ -213,16 +217,17 @@ check_url() {
   fi
   log_info "starting check with url: ${CHECK_URL}"
 
-  check_url=$CHECK_URL
+  local check_url=$CHECK_URL
   log_info "Starting check $APP_NAME with url: $check_url"
   local count=0
   local max_check_num=3
 
   while true; do
     ((count++))
-    [[ $count -gt ${max_check_num} ]] && project_log_error_exit "Failed to check app with url: $check_url.\n
-      Please go to the server to check the application's startup log."
-
+    if [[ $count -gt ${max_check_num} ]]; then
+      local error_logs=$(get_app_log)
+      project_log_error_exit "$(cat error_logs) \nFailed to check app with url: $check_url.\n "
+    fi
     log_info "try $count times"
     local resp_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 $check_url)
     [[ "$resp_code" == "200" ]] && break
@@ -230,6 +235,19 @@ check_url() {
   done
 
   log_info "$check_url return 200"
+}
+
+# 获取应用日志
+get_app_log() {
+  if [[ "$DEPLOY_TYPE" =~ (jar|nginx) ]]; then
+    tail -${LOG_LINE_NUM} ${APP_LOG}
+  elif [ "$DEPLOY_TYPE" == "docker" ]; then
+    sudo docker logs --tail ${LOG_LINE_NUM} ${APP_NAME}-${ENV_TYPE}
+  elif [ "$DEPLOY_TYPE" == "war" ]; then
+    tail -${LOG_LINE_NUM} ${TOMCAT_LOG}
+  else
+    log_error "获取日志失败"
+  fi
 }
 
 # 部署war包
@@ -273,8 +291,8 @@ deploy_jar() {
   log_info "Starting deploy $deploy_package"
   PID_FIND_STR="java -jar $deploy_package"
 
-  log_info "nohup java -jar  $deploy_package >${APPNAME}.log 2>&1 &"
-  nohup java -jar $deploy_package >${APPNAME}.log 2>&1 &
+  log_info "nohup java -jar  $deploy_package > ${APP_LOG} 2>&1 &"
+  nohup java -jar $deploy_package >${APP_LOG} 2>&1 &
 }
 
 # 部署.tar.gz包
@@ -311,11 +329,11 @@ deploy_docker() {
   # 默认为暴漏的端口
   CONTAINER_PORT=${container_port:-${PORT}}
   log_info "PORT:${PORT},CONTAINER_PORT:${CONTAINER_PORT}"
-  # 判断是否正在部署
+  # 判断是否已经部署
   sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
-  [ $? -eq 0 ] && sudo docker rm -f ${APP_NAME}-${ENV_TYPE}
+  [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${ENV_TYPE}
   # 部署的容器名称为应用名-项目名
-  sudo docker run -d --name ${APP_NAME}-${ENV_TYPE} -p ${PORT}:${CONTAINER_PORT} $imageName
+  do_it sudo docker run -d --name ${APP_NAME}-${ENV_TYPE} -p ${PORT}:${CONTAINER_PORT} $imageName
 }
 
 # 开始部署
@@ -332,6 +350,7 @@ start_env() {
 
   # 如果部署包为docker镜像(判断是否包含":"")，则使用root权限部署
   if [[ $deploy_package =~ .+:.+ ]]; then
+    DEPLOY_TYPE=docker
     imageName=$TAR_ADDRESS
     deploy_docker $imageName
   fi
@@ -344,16 +363,19 @@ start_env() {
   [ $? -eq 1 ] && project_log_error_exit "下载失败"
 
   # 加载配置作为全局变量
-  log_info "加载配置项\n: $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
+  log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
 
   # 根据包名匹配对应的部署脚本
   if [[ ${deploy_package} =~ $war_Suffix ]]; then
+    DEPLOY_TYPE=war
     deploy_war ${deploy_package}
 
   elif [[ ${deploy_package} =~ $jar_Suffix ]]; then
+    DEPLOY_TYPE=jar
     deploy_jar ${deploy_package}
 
   elif [[ ${deploy_package} =~ $tar_gz_Suffix ]]; then
+    DEPLOY_TYPE=nginx
     deploy_tgz ${deploy_package}
   else
     project_log_error_exit "没有此构建包的部署方式"

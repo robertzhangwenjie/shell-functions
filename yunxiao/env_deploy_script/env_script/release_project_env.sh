@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-29 14:59:37
+ # @LastEditTime: 2020-08-29 22:04:44
  # @LastEditors: robert zhang
  # @Description: 
  # @
@@ -17,16 +17,12 @@ source $HOME/env_script/commons
 APP_NAME=$1
 CRID=$2
 
-
 if [ -z $APP_NAME ]; then 
-  echo "释放失败，缺少参数：appName"
+  log_error "释放失败，缺少参数：appName"
   exit 1 
 fi
 
 # 释放环境
-clear_env
-
-# 删除log目录
-rm -rf ${HOME}/logs
+clean_env
 
 exit 0
