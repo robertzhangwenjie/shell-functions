@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-27 09:36:23
- # @LastEditTime: 2020-08-28 14:27:48
+ # @LastEditTime: 2020-08-29 09:41:49
  # @LastEditors: robert zhang
 # @Description: 部署脚本公共函数
 # @
@@ -23,15 +23,16 @@ log_error() {
 
 # 执行语句并打印失败或成功
 do_it() {
-  local execute_cmd=$@
-  local ret=$($execute_cmd)
+  local execute_cmd ret
+  execute_cmd="$@"
+  ret=$($execute_cmd)
   local isSuccess=$?
   if [ $isSuccess -eq 0 ]; then
-    action "$execute_cmd" /bin/true
+    action "$execute_cmd" true
     echo $ret
     return 0
   else
-    action "$execute_cmd" /bin/false
+    action "$execute_cmd" false
     echo $ret
     return 1
   fi
