@@ -37,7 +37,6 @@ cancel_deploy() {
 
 # 检查PIDFILE
 checkPIDfile() {
-  log_info "检查PID是否正常"
   if [ ! -e "$PID_FILE" ]; then
     log_warning "PID_FILE不存在"
     return 1

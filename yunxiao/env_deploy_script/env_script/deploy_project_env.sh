@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-29 15:39:38
+ # @LastEditTime: 2020-08-29 16:00:12
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -23,6 +23,13 @@ ENV_SCRIPT_PATH=$(
   pwd
 )
 
+APP_NAME=$1
+CRID=$2
+ENV_TYPE=$3
+TAR_ADDRESS=$4
+NEED_RESTORE=$5
+DEPLOY_ID=$6
+
 source ${ENV_SCRIPT_PATH}/commons
 source ${ENV_SCRIPT_PATH}/conf/env_cfg
 
@@ -30,12 +37,7 @@ source ${ENV_SCRIPT_PATH}/conf/env_cfg
 # TERM 要求程序正常退出
 trap 'cancel_deploy;killAllChildren' INT TERM
 
-APP_NAME=$1
-CRID=$2
-ENV_TYPE=$3
-TAR_ADDRESS=$4
-NEED_RESTORE=$5
-DEPLOY_ID=$6
+
 
 # 检查应用名
 if [ "x$APP_NAME" = "x" ]; then
