@@ -21,14 +21,14 @@
    ```
 
    - 脚本执行流程
-     1. 解压env_script.zip上传到指定的地址，拷贝解压包到当前用户目录
+     1. 压缩env_script目录，将压缩后的env_script.zip上传到指定的地址，拷贝解压包到当前用户目录
      2. 添加用户组yunxiao，设置sudo权限
      3. 新增用户，将用户加入yuxiao组
      4. 下载env_script.zip包到用户目录
 
    
 
-3. 修```depoy_project_env.sh```中的定义的配置
+3. 修改```depoy_project_env.sh```中的定义的配置
   ```shell
   GET_ANTX_PROPERTIES_URL="https://devops.linewellcloud.com/aenv-config/api/export/exportAntxProperties" # 获取配置项的api地址
   CHECK_URL="" # 部署完成的检查api地址

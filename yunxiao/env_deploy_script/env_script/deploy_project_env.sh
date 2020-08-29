@@ -2,12 +2,11 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-28 22:26:15
+ # @LastEditTime: 2020-08-29 15:39:38
  # @LastEditors: robert zhang
-# @Description:
+# @Description: 环境一键部署脚本
 # @
 ###
-# 环境一键部署脚本
 # 传递参数案例：
 #  自有环境部署spring-demo 5 FUNC upload/.../SNAPSHOT.jar no 15 1
 #  公共环境部署spring-demo trunk PUBLIC-AUTO upload/.../SNAPSHOT.jar yes 18 1
@@ -17,8 +16,19 @@
 # $4：部署包地址
 # $5  部署失败是否需要恢复上一版本，公共环境默认为true，其它为false，因为公共环境需要提供稳定的服务
 # $6：应用部署的ID
+# 获取当前文件的绝对路径
 
-source ${HOME}/env_script/commons
+ENV_SCRIPT_PATH=$(
+  cd $(dirname $0)
+  pwd
+)
+
+source ${ENV_SCRIPT_PATH}/commons
+source ${ENV_SCRIPT_PATH}/conf/env_cfg
+
+# INT -- CTRL + C
+# TERM 要求程序正常退出
+trap 'cancel_deploy;killAllChildren' INT TERM
 
 APP_NAME=$1
 CRID=$2
@@ -26,39 +36,6 @@ ENV_TYPE=$3
 TAR_ADDRESS=$4
 NEED_RESTORE=$5
 DEPLOY_ID=$6
-
-ENV_SCRIPT_PATH="$HOME/env_script"
-ENV_SCRIPT_URL="http://package.switch.aliyun.com:8088/upload/0/yunxiao/ATON_INTEGRATION/1/1/env_script.zip"
-ENV_SCRIPT="env_script.zip"
-
-update_env_script() {
-  cd ${HOME}
-  log_info "starting update env_script"
-  log_info "clearing env_script"
-  do_it rm -rf env_script
-
-  # 下载到指定目录
-  log_info "Try download env_script"
-  wget -nv -O ${ENV_SCRIPT} ${ENV_SCRIPT_URL}
-  local download=$?
-  if [ ! $download -eq 0 ]; then
-    log_warning "下载失败，尝试拷贝/root/env_script.zip"
-    sudo cp -f /root/env_script.zip $HOME
-    if [ $? -eq 0 ]; then
-      log_info "拷贝成功，开始解压$ENV_SCRIPT_PATH"
-      do_it unzip -o env_script.zip
-    else
-      log_info "拷贝失败"
-    fi
-  else
-    do_it unzip -o env_script.zip
-  fi
-
-  # 解压并赋权
-  log_info "unzip env_script successful"
-  chown -R ${USER}:${USER} /home/${USER}
-  log_info "update env_script done"
-}
 
 # 检查应用名
 if [ "x$APP_NAME" = "x" ]; then
@@ -74,7 +51,8 @@ fi
 
 # 检查配置项类型
 if [ "x$ENV_TYPE" = "x" ]; then
-  ENV_TYPE="FUNC"
+  log_error "envType should not be empty"
+  exit 1
 fi
 
 # 检查部署包是否传递
@@ -86,5 +64,22 @@ fi
 # 更新部署脚本
 update_env_script
 
-#项目环境部署，必要参数：$APP_NAME $CRID
-$ENV_SCRIPT_PATH/env_deploy_flow.sh $APP_NAME $CRID $ENV_TYPE $TAR_ADDRESS $NEED_RESTORE $DEPLOY_ID
+# 清理环境
+clean_env
+
+# 获取当前环境的部署配置项
+get_project_antx_properties
+
+# 启动环境，开始部署
+start_env
+
+# 创建pid文件
+createPIDfile
+
+# 检查部署是否成功
+check_deploy_status
+
+# 部署成功，记录本次部署命令
+echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH
+log_info "部署成功"
+exit 0

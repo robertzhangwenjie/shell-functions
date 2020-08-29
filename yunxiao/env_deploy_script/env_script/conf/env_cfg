@@ -1,40 +1,21 @@
 #!/bin/bash
 ###
  # @Author: robert zhang
- # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-28 22:38:25
+ # @Date: 2020-08-29 15:33:58
+ # @LastEditTime: 2020-08-29 15:45:35
  # @LastEditors: robert zhang
- # @Description: 
+ # @Description: 公共变量配置脚本
  # @
 ### 
-# 这个脚本用于分支搭建流程
-# $1:搭建环境的Id（必须）
-# $1：搭建的环境名（必须）
-# $2: 项目的CRID（必须）
-# $3：环境类型（必须）
-# $4：TAR包地址
 
-source $HOME/env_script/commons
-
-# 获取当前文件的绝对路径
-COMMONS_PATH=$(
-  cd $(dirname $0)
-  pwd
-)
-
-APP_NAME=$1
-CRID=$2
-ENV_TYPE=$3
-TAR_ADDRESS=$4
-NEED_RESTORE=$5
-DEPLOY_ID=$6
-
-# INT -- CTRL + C
-# TERM 要求程序正常退出
-trap 'cancel_deploy;killAllChildren' INT TERM
-
+# 脚本相关变量
+ENV_SCRIPT="env_script.zip"
+DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
+ENV_SCRIPT_URL="${DOWNLOAD_URL}/upload/0/yunxiao/ATON_INTEGRATION/1/1/${ENV_SCRIPT}"
 # 获取配置项的api
 GET_ANTX_PROPERTIES_URL="https://devops.linewellcloud.com/aenv-config/api/export/exportAntxProperties"
+
+
 PID_FILE=$HOME/${APP_NAME}.pid
 WORK_DIR=$HOME
 CHECK_URL=""
@@ -44,17 +25,14 @@ USER=$(whoami)
 PORT=$(whoami)
 ENV_PROPERTIES_FILE="${HOME}/env.properties.${APP_NAME}.${ENV_TYPE}"
 
-
 # 日志配置
 LOG_DIR=logs
-
-# 用来查找pid的字符串
-PID_FIND_STR=""
 
 # nginx相关全局变量
 NGINX_HOME=/usr/install/nginx
 NGINX_CONFIG_DIR=$NGINX_HOME/conf/conf.d
-NGINX_TEMPLATE_PATH=$COMMONS_PATH/template
+NGINX_TEMPLATE_PATH=$ENV_SCRIPT_PATH/template
+NGINX_TEMPLATE=$NGINX_TEMPLATE_PATH/nginx.conf.tpl
 NGINX_CONF=${APP_NAME}-${ENV_TYPE}-${USER}.conf
 NGINX_CMD=${NGINX_HOME}/sbin/nginx
 rpm -ql nginx >/dev/null 2>&1
@@ -79,22 +57,3 @@ TOMCAT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT
 TOMCAT_PATH="/usr/install"
 
 
-# 清理环境
-clean_env
-
-# 获取当前环境的部署配置项
-get_project_antx_properties
-
-# 启动环境，开始部署
-start_env
-
-# 创建pid文件
-createPIDfile
-
-# 检查部署是否成功
-check_deploy_status
-
-# 部署成功，记录本次部署命令
-echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH
-log_info "部署成功"
-exit 0

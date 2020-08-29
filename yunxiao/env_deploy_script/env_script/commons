@@ -5,8 +5,9 @@ source /etc/profile
 
 # 执行语句并打印失败或成功
 do_it() {
-  local execute_cmd=$@
-  local ret=$($execute_cmd)
+  local execute_cmd ret
+  execute_cmd="$@"
+  ret=$($execute_cmd)
   local isSuccess=$?
   if [ $isSuccess -eq 0 ]; then
     action "$execute_cmd" true
@@ -34,6 +35,7 @@ cancel_deploy() {
   kill_ws
 }
 
+# 检查PIDFILE
 checkPIDfile() {
   log_info "检查PID是否正常"
   if [ ! -e "$PID_FILE" ]; then
@@ -56,13 +58,14 @@ checkPIDfile() {
   return 1
 }
 
+# 创建PIDFILE
 createPIDfile() {
   if [ -n "$PID_FIND_STR" ]; then
     mypid=$(ps ux | grep "${PID_FIND_STR}" | grep -v grep | awk '{print $2}')
     if [ $? -eq 0 ]; then
       echo "$mypid" >$PID_FILE
       log_info "create pid_file: $PID_FILE, PID:$mypid"
-      retun 0
+      return 0
     else
       project_log_error_exit "deploy failed for cannot find pid with ${PID_FIND_STR}"
     fi
@@ -70,18 +73,22 @@ createPIDfile() {
 
 }
 
+# 打印INFO级别日志
 log_info() {
   echo -e "$(date +"%Y-%m-%d %H:%M:%S") [INFO] $1"
 }
 
+# 打印WARNING级别日志
 log_warning() {
   echo -e "$(date +"%Y-%m-%d %H:%M:%S") \033[33m[WARNING]\033[0m" $1
 }
 
+# 打印错误日志
 log_error() {
   echo -e "$(date +"%Y-%m-%d %H:%M:%S") \033[31m[ERROR]\033[0m" $1
 }
 
+# 退出程序
 project_log_error_exit() {
   local error_message=$1
 
@@ -97,6 +104,7 @@ project_log_error_exit() {
   exit 1
 }
 
+# 获取配置项
 get_project_antx_properties() {
   if [ -z "$APP_NAME" ] || [ -z "$ENV_TYPE" ]; then
     project_log_error_exit "appNme and envType cannot be empty"
@@ -145,15 +153,17 @@ kill_ws() {
   # 清理nginx
   log_info "清理nginx"
   pidofproc nginx
-  if [ $? -eq 0 ];then
+  if [ $? -eq 0 ]; then
     ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
     [ $? -eq 0 ] && rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
     do_it sudo ${NGINX_CMD} -s reload
     log_info "清理完成，并已重启nginx"
-  else 
+  else
     log_info "未发现nginx进程正在运行"
+  fi
 }
 
+# 删除工作区的文件除了传入的文件名
 rm_except() {
   cd ${WORK_DIR}
   local all_files=$(ls)
@@ -171,7 +181,7 @@ rm_except() {
   done
 }
 
-# 清理环境,删除相关文件
+# 删除工作区文件
 clean_work_dir() {
   log_info "starting clear $WORK_DIR"
   # 杀掉上一次的部署
@@ -182,6 +192,7 @@ clean_work_dir() {
   fi
 }
 
+# 清理环境
 clean_env() {
   log_info "开始清理环境"
   kill_ws
@@ -263,7 +274,7 @@ deploy_jar() {
   log_info "Starting deploy $deploy_package"
   PID_FIND_STR="java -jar $deploy_package"
 
-  log_info "nohup java -jar $deploy_package 2>&1 &"
+  log_info "nohup java -jar  $deploy_package >${APPNAME}.log 2>&1 &"
   nohup java -jar $deploy_package >${APPNAME}.log 2>&1 &
 }
 
@@ -275,7 +286,7 @@ deploy_tgz() {
   # 生成nginx配置文件，根据ENV_TYPE.APP_NAME.com作为域名 NGINX_HTML_DIR/APP_NAME作为root
   log_info "generate nginx config"
   eval "cat <<EOF 
-  $(<$NGINX_TEMPLATE_PATH) 
+  $(<$NGINX_TEMPLATE) 
   EOF "
   >${NGINX_CONFIG_DIR}/$NGINX_CONF
 
@@ -351,4 +362,34 @@ start_env() {
   # 部署完成后等待5s继续执行
   sleep 5
   log_info "Deploy ${deploy_package} finished"
+}
+
+# 更新部署脚本
+update_env_script() {
+  cd ${HOME}
+  log_info "starting update env_script"
+  log_info "clearing env_script"
+  do_it rm -rf env_script
+
+  # 下载到指定目录
+  log_info "Try download env_script"
+  wget -nv -O ${ENV_SCRIPT} ${ENV_SCRIPT_URL}
+  local download=$?
+  if [ ! $download -eq 0 ]; then
+    log_warning "下载失败，尝试拷贝/root/env_script.zip"
+    sudo cp -f /root/env_script.zip $HOME
+    if [ $? -eq 0 ]; then
+      log_info "拷贝成功，开始解压$ENV_SCRIPT_PATH"
+      do_it unzip -o env_script.zip
+    else
+      log_info "拷贝失败"
+    fi
+  else
+    do_it unzip -o env_script.zip
+  fi
+
+  # 解压并赋权
+  log_info "unzip env_script successful"
+  do_it chown -R ${USER}:${USER} /home/${USER}
+  log_info "update env_script done"
 }

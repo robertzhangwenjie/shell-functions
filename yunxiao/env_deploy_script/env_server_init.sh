@@ -2,17 +2,11 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-28 16:38:29
+ # @LastEditTime: 2020-08-29 15:29:37
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
 ###
-
-YUNXIAO_GOURP=yunxiao
-UPLOAD_URL="http://package.switch.aliyun.com:9090/upload"
-DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
-ENV_SCRIPT="env_script.zip"
-UPLOAD_SCRIPT="curl -X POST -F warName=@${ENV_SCRIPT} -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 ${UPLOAD_URL}"
 
 # 获取当前文件的绝对路径
 WORK_PATH=$(
@@ -20,7 +14,13 @@ WORK_PATH=$(
   pwd
 )
 
-source $WORK_PATH/functions.sh
+source $WORK_PATH/env_script/commons
+
+YUNXIAO_GOURP=yunxiao
+UPLOAD_URL="http://package.switch.aliyun.com:9090/upload"
+DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
+ENV_SCRIPT="env_script.zip"
+UPLOAD_SCRIPT="curl -X POST -F warName=@${ENV_SCRIPT} -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 ${UPLOAD_URL}"
 
 # 上传env_script
 upload_env_script() {
