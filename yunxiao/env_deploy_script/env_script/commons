@@ -38,19 +38,15 @@ cancel_deploy() {
 # 检查PIDFILE
 checkPIDfile() {
   if [ ! -e "$PID_FILE" ]; then
-    log_warning "PID_FILE不存在"
+    log_warning "该应用程序pid文件不存在"
     return 1
   fi
 
   procpid=$(<"$PID_FILE")
-  if [[ -z "$procpid" ]]; then
-    log_warning "PID_FILE为空"
-    return 1
-  fi
-
+ 
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
-    log_info "PID检查正常，正在运行: $(</proc/$procpid/cmdline)"
+    log_info "应用程序正在运行: $(</proc/$procpid/cmdline)"
     return 0
   fi
   return 1
@@ -60,9 +56,9 @@ checkPIDfile() {
 createPIDfile() {
   if [ -n "$PID_FIND_STR" ]; then
     mypid=$(ps ux | grep "${PID_FIND_STR}" | grep -v grep | awk '{print $2}')
-    if [ $? -eq 0 ]; then
+    if [ $? -eq 0 -o  -n "$mypid" ]; then
       echo "$mypid" >$PID_FILE
-      log_info "create pid_file: $PID_FILE, PID:$mypid"
+      log_info "创建 pid_file: $PID_FILE, PID:$mypid"
       return 0
     else
       project_log_error_exit "deploy failed for cannot find pid with ${PID_FIND_STR}"
@@ -108,7 +104,7 @@ get_project_antx_properties() {
     project_log_error_exit "appNme and envType cannot be empty"
   fi
 
-  log_info "Get antx properties : \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
+  log_info "获取应用配置项: \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
   rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
   curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
 
@@ -121,7 +117,7 @@ get_project_antx_properties() {
       origin_value=$(echo $line | awk -F"=" '{print $2}')
       value=$(eval echo $origin_value)
 
-      log_info "Set env variable:$key=$value"
+      log_info "获取配置项:$key=$value"
       echo "$key=$value" >>$ENV_PROPERTIES_FILE
     done
   fi
@@ -131,22 +127,28 @@ get_project_antx_properties() {
 # 清理当前用户运行的所有服务
 kill_ws() {
 
-  log_info "清理java服务"
+  # 清理java服务
   checkPIDfile
   if [ $? -eq 0 ]; then
     local mypid=$(<$PID_FILE)
-    log_info "kill -9 $mypid"
+    log_info "清除pid: $mypid"
     do_it kill -9 $mypid
+    do_it rm "$PID_FILE"
   else
     log_info "killall -u ${USER} -9 java"
-    killall -u ${USER} -9 java
+    do_it killall -u ${USER} -9 java
   fi
-  rm "$PID_FILE"
+  log_info "清理java服务成功"
 
   # 清理docker
   log_info "清理docker服务"
   sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
-  [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${CRID}
+
+  if [ $? -eq 0 ]; then
+    do_it sudo docker rm -f ${APP_NAME}-${CRID} 
+  else
+    log_info "未发现该应用正在运行docker服务"
+  fi
 
   # 清理nginx
   log_info "开始清理nginx"
@@ -155,14 +157,15 @@ kill_ws() {
     # 查看是否有该应用程序配置
     ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
     if [ $? -eq 0 ]; then
-      rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
+      log_info "发现该应用nginx配置文件:${NGINX_CONF}"
+      do_it rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
       do_it sudo ${NGINX_CMD} -s reload
       log_info "清理完成，并已重启nginx"
     else
       log_info "未发现该应用程序的nginx配置文件"
     fi
   else
-    log_info "未发现nginx进程正在运行"
+    log_info "未发现nginx服务正在运行"
   fi
 }
 
@@ -171,7 +174,7 @@ rm_except() {
   cd ${WORK_DIR}
   local all_files=$(ls)
   local except_files="$@"
-  log_info "rm except files:$except_files"
+  log_info "清除目录$WORK_DIR,除了文件:$except_files"
   for file in $all_files; do
     local del=true
     for except_file in $except_files; do
@@ -239,6 +242,7 @@ check_url() {
 
 # 获取应用日志
 get_app_log() {
+  log_info "获取应用服务最新日志"
   if [[ "$DEPLOY_TYPE" =~ (jar|nginx) ]]; then
     tail -${LOG_LINE_NUM} ${APP_LOG}
   elif [ "$DEPLOY_TYPE" == "docker" ]; then
@@ -356,7 +360,7 @@ start_env() {
   fi
 
   # 下载部署包,-nv非详细输出
-  log_info "开始下载 $TAR_ADDRESS"
+  log_info "下载部署包: $TAR_ADDRESS"
   wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS
 
   # 下载失败则退出
@@ -382,7 +386,7 @@ start_env() {
   fi
   # 部署完成后等待5s继续执行
   sleep 5
-  log_info "Deploy ${deploy_package} finished"
+  log_info "部署${deploy_package}完成"
 }
 
 # 更新部署脚本

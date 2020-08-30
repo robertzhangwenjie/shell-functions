@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-29 23:12:21
+ # @LastEditTime: 2020-08-30 08:33:23
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -84,8 +84,8 @@ start_env
 # 创建pid文件
 createPIDfile
 
-# 等待10s检查部署状态
-sleep 10
+# 等待20s检查部署状态
+sleep 20
 
 # 检查部署是否成功
 check_deploy_status
