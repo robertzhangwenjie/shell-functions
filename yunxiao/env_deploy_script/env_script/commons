@@ -159,7 +159,7 @@ kill_ws() {
     if [ $? -eq 0 ]; then
       log_info "发现该应用nginx配置文件:${NGINX_CONF}"
       do_it rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
-      do_it sudo ${NGINX_CMD} -s reload
+      do_it sudo ${NGINX_SBIN_PATH} -s reload
       log_info "清理完成，并已重启nginx"
     else
       log_info "未发现该应用程序的nginx配置文件"
@@ -322,7 +322,7 @@ deploy_tgz() {
 
   # 重启nginx server
   log_info "Restart nginx"
-  eval "sudo ${NGINX_CMD} -s reload"
+  eval "sudo ${NGINX_SBIN_PATH} -s reload"
 }
 
 # 部署docker容器

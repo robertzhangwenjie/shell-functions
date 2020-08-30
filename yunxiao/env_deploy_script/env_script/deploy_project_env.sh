@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-30 08:33:23
+ # @LastEditTime: 2020-08-30 09:19:28
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -31,9 +31,38 @@ NEED_RESTORE=$5
 DEPLOY_ID=$6
 CHECK_URL=$7
 
+# 部署完成后等待时间
+SLEEP_TIME=20
 
 source ${ENV_SCRIPT_PATH}/commons
 source ${ENV_SCRIPT_PATH}/conf/env.cfg
+
+# java相关变量
+if [ -z "$JAVA_HOME" ]; then
+  export JAVA_HOME=${JAVA8_HOME}
+  export PATH=$JAVA_HOME/bin:$PATH
+  export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+fi
+
+# 打印java相关信息
+java -version
+
+# 检查nginx是否为rpm安装
+rpm -ql nginx >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  NGINX_HOME=/etc/nginx
+  NGINX_CONFIG_DIR=${NGINX_HOME}/conf.d
+  NGINX_SBIN_PATH=/usr/sbin/nginx
+else
+  NGINX_HOME=/usr/install/nginx
+  NGINX_CONFIG_DIR=$NGINX_HOME/conf/conf.d
+  NGINX_SBIN_PATH=${NGINX_HOME}/sbin/nginx
+fi
+
+# 打印nginx相关信息
+echo "NGINX_HOME=${NGINX_HOME}" 
+echo "NGINX_CONFIG_DIR=${NGINX_CONFIG_DIR}"
+echo "NGINX_SBIN_PATH=${NGINX_SBIN_PATH}"
 
 # INT -- CTRL + C
 # TERM 要求程序正常退出
@@ -84,7 +113,7 @@ start_env
 # 创建pid文件
 createPIDfile
 
-# 等待20s检查部署状态
+log_info "等待${SLEEP_TIME}检查部署状态"
 sleep 20
 
 # 检查部署是否成功
