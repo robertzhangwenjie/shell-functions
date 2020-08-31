@@ -207,8 +207,14 @@ clean_env() {
 
 # 检查部署状态
 check_deploy_status() {
-  checkPIDfile
-  [ ! $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
+  if [ "$DEPLOY_TYPE" == "docker" ];then
+    # 获取docker部署状态
+    local docker_status=`sudo docker inspect -f '{{.State.Running}}' ${APP_NAME}-${ENV_TYPE}`
+    [ ! $? -eq 0 ] && project_log_error_exit "容器运行状态异常，部署失败"
+  else
+    checkPIDfile
+    [ ! $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
+  fi
   check_url
 }
 
@@ -258,9 +264,15 @@ get_app_log() {
 deploy_war() {
 
   local deploy_package=$1
-  log_info "获取${TOMCAT7_VERSION}.zip"
-  wget -P ${HOEM} -nv ${TOMCAT_DOWNLOAD_URL} ||
+  log_info "开始获取${TOMCAT_VERSION}.zip"
+  wget -P ${HOEM} -nv ${TOMCAT_DOWNLOAD_URL} 
+
+  if [ ! $? -eq 0 ]; then
+    log_warning "下载失败，开始拷贝${TOMCAT_PATH}/${TOMCAT_VERSION}"
     cp ${TOMCAT_PATH}/${TOMCAT_VERSION}.zip ${HOME}
+    [ ! $? -eq 0 ] && project_log_error_exit "获取${TOMCAT_VERSION}失败"
+  fi
+  log_info "获取${TOMCAT_VERSION}成功"
   unzip ${HOME}/${TOMCAT_VERSION}.zip
 
   log_info "Starting deploy $deploy_package"
@@ -338,6 +350,7 @@ deploy_docker() {
   [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${ENV_TYPE}
   # 部署的容器名称为应用名-项目名
   do_it sudo docker run -d --name ${APP_NAME}-${ENV_TYPE} -p ${PORT}:${CONTAINER_PORT} $imageName
+
 }
 
 # 开始部署
@@ -357,14 +370,14 @@ start_env() {
     DEPLOY_TYPE=docker
     imageName=$TAR_ADDRESS
     deploy_docker $imageName
+  else
+    # 下载部署包,-nv非详细输出
+    log_info "下载部署包: $TAR_ADDRESS"
+    wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS
+
+    # 下载失败则退出
+    [ $? -eq 1 ] && project_log_error_exit "下载失败"
   fi
-
-  # 下载部署包,-nv非详细输出
-  log_info "下载部署包: $TAR_ADDRESS"
-  wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS
-
-  # 下载失败则退出
-  [ $? -eq 1 ] && project_log_error_exit "下载失败"
 
   # 加载配置作为全局变量
   log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE

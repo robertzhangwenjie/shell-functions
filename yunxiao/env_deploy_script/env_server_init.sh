@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-29 15:29:37
+ # @LastEditTime: 2020-08-31 18:11:20
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -22,21 +22,51 @@ DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
 ENV_SCRIPT="env_script.zip"
 UPLOAD_SCRIPT="curl -X POST -F warName=@${ENV_SCRIPT} -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 ${UPLOAD_URL}"
 
+# 安装依赖包
+install_dependeces() {
+  yum install -y git
+  yum install -y unzip
+  yum install -y zip
+  yum install -y docker
+  yum install -y jq
+}
+
 # 上传env_script
 upload_env_script() {
   log_info "压缩 env_script"
   chmod 755 -R env_script/*
   do_it zip -qr ${ENV_SCRIPT} env_script/*
-  log_info "上传 ${ENV_SCRIPT}"
+  log_info "上传 ${ENV_SCRIPT}:$UPLOAD_SCRIPT"
   ENV_SCRIPT_ADDRESS=`eval $UPLOAD_SCRIPT`
+
+  if [ $? -eq 0 ];then
+    local response_code=`$UPLOAD_SCRIPT | jq .status`
+    if [ "$response_code" == "200" ]; then
+      log_info "上传成功，下载地址：$ENV_SCRIPT_ADDRESS"
+      return 0
+    else
+      log_error "上传失败: $ENV_SCRIPT_ADDRESS"
+      return 1
+    fi
+  else
+    log_error "上传失败"
+    return 1
+  fi
 }
 
-# 下载env_scropt脚本包
+# 下载env_script脚本包
 get_env_script() {
-  log_info "downloading ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}"
-  wget -nv -O ${HOME}/${ENV_SCRIPT} ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
-  [ ! $? -eq 0 ] && log_info "download ${ENV_SCRIPT_ADDRESS} failed"
-  log_info "downloaded ${ENV_SCRIPT} to ${HOME} successful"
+  upload_env_script
+  if [ $? -eq 0 ];then
+    log_info "downloading ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}"
+    wget -nv -O ${HOME}/${ENV_SCRIPT} ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
+
+    [ ! $? -eq 0 ] && log_info "download ${ENV_SCRIPT_ADDRESS} failed"
+    log_info "downloaded ${ENV_SCRIPT} to ${HOME} successful"
+  else
+    log_info "复制${ENV_SCRIPT} 到 ${HOME}"
+    cp ${WORK_PATH}/$ENV_SCRIPT ${HOME}
+  fi
 }
 
 # 添加sudo权限
@@ -109,13 +139,18 @@ install_env_script() {
 add_user() {
   local username=$1
   log_info "添加用户${username}"
-  do_it useradd $username -p $username -G ${YUNXIAO_GOURP}
+  id -u ${username} > /dev/null
+  if [ $? -eq 0 ]; then
+    log_info "用户已存在，将其添加到group:${YUNXIAO_GOURP}" 
+    usermod -a -G ${YUNXIAO_GOURP} ${username}
+  else
+    do_it useradd $username -p $username -G ${YUNXIAO_GOURP}
+  fi
   install_env_script $username
 }
 
 cd $WORK_PATH
-# 上传脚本
-upload_env_script
+
 # 获取脚本
 get_env_script
 # 添加sudo执行权限组
