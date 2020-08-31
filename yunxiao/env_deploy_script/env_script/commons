@@ -43,7 +43,7 @@ checkPIDfile() {
   fi
 
   procpid=$(<"$PID_FILE")
- 
+
   if [ -e "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
     log_info "应用程序正在运行: $(</proc/$procpid/cmdline)"
@@ -56,7 +56,7 @@ checkPIDfile() {
 createPIDfile() {
   if [ -n "$PID_FIND_STR" ]; then
     mypid=$(ps ux | grep "${PID_FIND_STR}" | grep -v grep | awk '{print $2}')
-    if [ $? -eq 0 -o  -n "$mypid" ]; then
+    if [ $? -eq 0 -o -n "$mypid" ]; then
       echo "$mypid" >$PID_FILE
       log_info "创建 pid_file: $PID_FILE, PID:$mypid"
       return 0
@@ -107,10 +107,10 @@ get_project_antx_properties() {
   sudo rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
   log_info "获取应用配置项: \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
   curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
-  [ $? -eq 0 ] && log_info "配置项内容：$(< antx.properties.${APP_NAME}.${ENV_TYPE})" || log_error "配置项获取失败"
 
   # 将当前环境的配置项设置为环境变量
   if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]]; then
+    log_info "配置项内容：$(<antx.properties.${APP_NAME}.${ENV_TYPE})"
     echo '#!/bin/bash' >$ENV_PROPERTIES_FILE
     cat $HOME/antx.properties.$APP_NAME.$ENV_TYPE | while read line; do
       origin_key=$(echo $line | awk -F"=" '{print $1}')
@@ -121,10 +121,11 @@ get_project_antx_properties() {
       log_info "获取配置项:$key=$value"
       echo "$key=$value" >>$ENV_PROPERTIES_FILE
     done
-  else
-    log_warning "应用配置项为空"
+  elif [ -f antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
+    log_info "应用配置项为空"
+  elif [ ! -e antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
+    log_error "应用配置获取失败"
   fi
-
 }
 
 # 清理当前用户运行的所有服务
@@ -148,7 +149,7 @@ kill_ws() {
   sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
 
   if [ $? -eq 0 ]; then
-    do_it sudo docker rm -f ${APP_NAME}-${ENV_TYPE} 
+    do_it sudo docker rm -f ${APP_NAME}-${ENV_TYPE}
   else
     log_info "未发现该应用正在运行docker服务"
   fi
@@ -186,7 +187,7 @@ rm_except() {
         break
       fi
     done
-    [ $del = true ] && rm -rf $file
+    [ $del = true ] && do_it rm -rf $file
   done
 }
 
@@ -210,12 +211,13 @@ clean_env() {
 
 # 检查部署状态
 check_deploy_status() {
-  if [ "$DEPLOY_TYPE" == "docker" ];then
+  if [ "$DEPLOY_TYPE" == "docker" ]; then
     # 获取docker部署状态
-    local docker_status=`sudo docker inspect -f '{{.State.Running}}' ${APP_NAME}-${ENV_TYPE}`
+    local docker_status=$(sudo docker inspect -f '{{.State.Running}}' ${APP_NAME}-${ENV_TYPE})
     [ ! $? -eq 0 ] && project_log_error_exit "容器运行状态异常，部署失败"
-  elif [ "$DEPLOY_TYPE" == "nginx" ];then
-    netstat 
+  elif [ "$DEPLOY_TYPE" == "nginx" ]; then
+    do_it netstat -anop | grep -w "LISTEN" | grep -w ${PORT}
+    [ $? -eq 0 ] && log_info "nginx监听正常" || project_log_error_exit "应用部署失败"
   else
     checkPIDfile
     [ ! $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
@@ -270,7 +272,7 @@ deploy_war() {
 
   local deploy_package=$1
   log_info "开始获取${TOMCAT_VERSION}.zip"
-  wget -P ${HOEM} -nv ${TOMCAT_DOWNLOAD_URL} 
+  wget -P ${HOEM} -nv ${TOMCAT_DOWNLOAD_URL}
 
   if [ ! $? -eq 0 ]; then
     log_warning "下载失败，开始拷贝${TOMCAT_PATH}/${TOMCAT_VERSION}"
@@ -328,7 +330,7 @@ deploy_tgz() {
   EOF "
   >${NGINX_CONFIG_DIR}/$NGINX_CONF
 
-  [ ! $? -eq 0] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
+  [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
 
   # 部署目录
   # deploy_dir=${NGINX_HOME}/html/${APP_NAME}/
@@ -371,7 +373,7 @@ start_env() {
 
   # 获取构建包名
   deploy_package=$(echo ${TAR_ADDRESS##*/})
-  
+
   # 加载配置作为全局变量
   log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
 

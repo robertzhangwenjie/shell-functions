@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-31 22:33:58
+ # @LastEditTime: 2020-08-31 23:19:59
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -41,11 +41,11 @@ upload_env_script() {
       log_info "上传成功，下载地址：$ENV_SCRIPT_ADDRESS"
       return 0
     else
-      log_error "上传失败: $ENV_SCRIPT_ADDRESS"
+      log_warning "上传失败: $ENV_SCRIPT_ADDRESS"
       return 1
     fi
   else
-    log_error "上传失败"
+    log_warning "上传失败"
     return 1
   fi
 }
