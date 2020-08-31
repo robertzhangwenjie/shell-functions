@@ -104,9 +104,10 @@ get_project_antx_properties() {
     project_log_error_exit "appNme and envType cannot be empty"
   fi
 
+  sudo rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
   log_info "获取应用配置项: \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
-  rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
   curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
+  [ $? -eq 0 ] && log_info "配置项内容：$(< antx.properties.${APP_NAME}.${ENV_TYPE})" || log_error "配置项获取失败"
 
   # 将当前环境的配置项设置为环境变量
   if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]]; then
@@ -120,6 +121,8 @@ get_project_antx_properties() {
       log_info "获取配置项:$key=$value"
       echo "$key=$value" >>$ENV_PROPERTIES_FILE
     done
+  else
+    log_warning "应用配置项为空"
   fi
 
 }
@@ -145,7 +148,7 @@ kill_ws() {
   sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
 
   if [ $? -eq 0 ]; then
-    do_it sudo docker rm -f ${APP_NAME}-${CRID} 
+    do_it sudo docker rm -f ${APP_NAME}-${ENV_TYPE} 
   else
     log_info "未发现该应用正在运行docker服务"
   fi
@@ -211,6 +214,8 @@ check_deploy_status() {
     # 获取docker部署状态
     local docker_status=`sudo docker inspect -f '{{.State.Running}}' ${APP_NAME}-${ENV_TYPE}`
     [ ! $? -eq 0 ] && project_log_error_exit "容器运行状态异常，部署失败"
+  elif [ "$DEPLOY_TYPE" == "nginx" ];then
+    netstat 
   else
     checkPIDfile
     [ ! $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
@@ -323,6 +328,8 @@ deploy_tgz() {
   EOF "
   >${NGINX_CONFIG_DIR}/$NGINX_CONF
 
+  [ ! $? -eq 0] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
+
   # 部署目录
   # deploy_dir=${NGINX_HOME}/html/${APP_NAME}/
   # log_info "清理部署目录: ${deploy_dir}"
@@ -364,6 +371,9 @@ start_env() {
 
   # 获取构建包名
   deploy_package=$(echo ${TAR_ADDRESS##*/})
+  
+  # 加载配置作为全局变量
+  log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
 
   # 如果部署包为docker镜像(判断是否包含":"")，则使用root权限部署
   if [[ $deploy_package =~ .+:.+ ]]; then
@@ -377,25 +387,22 @@ start_env() {
 
     # 下载失败则退出
     [ $? -eq 1 ] && project_log_error_exit "下载失败"
-  fi
 
-  # 加载配置作为全局变量
-  log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
+    # 根据包名匹配对应的部署脚本
+    if [[ ${deploy_package} =~ $war_Suffix ]]; then
+      DEPLOY_TYPE=war
+      deploy_war ${deploy_package}
 
-  # 根据包名匹配对应的部署脚本
-  if [[ ${deploy_package} =~ $war_Suffix ]]; then
-    DEPLOY_TYPE=war
-    deploy_war ${deploy_package}
+    elif [[ ${deploy_package} =~ $jar_Suffix ]]; then
+      DEPLOY_TYPE=jar
+      deploy_jar ${deploy_package}
 
-  elif [[ ${deploy_package} =~ $jar_Suffix ]]; then
-    DEPLOY_TYPE=jar
-    deploy_jar ${deploy_package}
-
-  elif [[ ${deploy_package} =~ $tar_gz_Suffix ]]; then
-    DEPLOY_TYPE=nginx
-    deploy_tgz ${deploy_package}
-  else
-    project_log_error_exit "没有此构建包的部署方式"
+    elif [[ ${deploy_package} =~ $tar_gz_Suffix ]]; then
+      DEPLOY_TYPE=nginx
+      deploy_tgz ${deploy_package}
+    else
+      project_log_error_exit "没有此构建包的部署方式"
+    fi
   fi
   # 部署完成后等待5s继续执行
   sleep 5

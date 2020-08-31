@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-31 18:11:20
+ # @LastEditTime: 2020-08-31 22:33:58
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -24,11 +24,7 @@ UPLOAD_SCRIPT="curl -X POST -F warName=@${ENV_SCRIPT} -F crid=0  -F appName=yunx
 
 # 安装依赖包
 install_dependeces() {
-  yum install -y git
-  yum install -y unzip
-  yum install -y zip
-  yum install -y docker
-  yum install -y jq
+  yum install -y git unzip zip jq
 }
 
 # 上传env_script
@@ -93,7 +89,7 @@ del_sudo_cfg() {
   
 }
 
-# 添加sudo组，并设置sudo权限
+# 添加用户组，并设置sudo权限
 add_sudo_group() {
 
   # 禁用"!"功能
@@ -151,6 +147,8 @@ add_user() {
 
 cd $WORK_PATH
 
+# 安装依赖
+install_dependeces
 # 获取脚本
 get_env_script
 # 添加sudo执行权限组

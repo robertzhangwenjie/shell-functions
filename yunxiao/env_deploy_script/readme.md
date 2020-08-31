@@ -34,25 +34,13 @@
     LOG_LINE_NUM=100 #显示log的行数
 
     # nginx相关全局变量
-    NGINX_HOME=/usr/install/nginx #默认安装nginx到/usr/install/nginx目录
-    NGINX_CONFIG_DIR=$NGINX_HOME/conf/conf.d
     NGINX_TEMPLATE_PATH=$ENV_SCRIPT_PATH/template
-    NGINX_CMD=${NGINX_HOME}/sbin/nginx
-    rpm -ql nginx >/dev/null 2>&1
-
-    if [ $? -eq 0 ]; then
-      NGINX_HOME=/etc/nginx
-      NGINX_CONFIG_DIR=${NGINX_HOME}/conf.d
-      NGINX_CMD=nginx
-    fi
-
+    NGINX_TEMPLATE=$NGINX_TEMPLATE_PATH/nginx.conf.tpl
+    NGINX_CONF=${APP_NAME}-${ENV_TYPE}-${USER}.conf
+ 
     # java相关变量
-    if [ -z "$JAVA_HOME" ]; then
-      export JAVA_HOME=/usr/install/java8
-      export PATH=$JAVA_HOME/bin:$PATH
-      export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
-    fi
-
+    export JAVA_HOME=/usr/install/java8
+  
     # 获取tomcat版本
     TOMCAT_VERSION="apache-tomcat-7.0.54"
 

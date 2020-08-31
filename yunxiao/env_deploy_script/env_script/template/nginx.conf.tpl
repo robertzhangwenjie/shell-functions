@@ -7,4 +7,14 @@ server {
   location / {
     root ${HOME}/${APP_NAME};
   }
+
+  location ${location} {
+    proxy_set_header Host '$host';
+    proxy_redirect off;
+    proxy_pass http://${backend_url};
+  }
+
+  location ~ .*\.(js|css|ico|png|jpg|eot|svg|ttf|woff|html) {
+    root ${HOME}/${APP_NAME};
+  }
 }
