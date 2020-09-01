@@ -327,7 +327,7 @@ deploy_tgz() {
   log_info "generate nginx config"
   eval "cat <<EOF 
   $(<$NGINX_TEMPLATE) 
-  EOF "
+  EOF"
   >${NGINX_CONFIG_DIR}/$NGINX_CONF
 
   [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
