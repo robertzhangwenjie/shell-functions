@@ -1,0 +1,17 @@
+server {
+  server_name ${ENV_TYPE,,}.${APP_NAME}.${COMPANY:-com};
+  listen ${PORT};
+
+  access_log ${HOME}/NGINX_ACCESS_LOG main;
+  error_log ${HOME}/$NGINX_ERROR_LOG;
+
+  location / {
+    root ${HOME}/${APP_NAME};
+    proxy_pass ${backend_url}
+    proxy_redirect default;
+  }
+
+  location ~ .*\.(js|css|ico|png|jpg|eot|svg|ttf|woff|html) {
+    root ${HOME}/${APP_NAME};
+  }
+}
