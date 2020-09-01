@@ -2,7 +2,8 @@ server {
   server_name ${ENV_TYPE,,}.${APP_NAME}.${COMPANY:-com};
   listen ${PORT};
 
-  access_log ${APP_LOG} main;
+  access_log ${HOME}/access_${APP_LOG} main;
+  error_log ${HOME}/error_${APP_LOG};
 
   location / {
     root ${HOME}/${APP_NAME};

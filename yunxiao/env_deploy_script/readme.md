@@ -22,7 +22,7 @@
 
 1. 修改```conf/env.cfg```中的配置
     ```shell
-    # 配置项api地址
+    # 配置项api地址,如果是多租户则需要加上group=租户id
     GET_ANTX_PROPERTIES_URL="https://devops.yunxiao.com/aenv-config/api/export/exportAntxProperties"
 
     #显示log的行数

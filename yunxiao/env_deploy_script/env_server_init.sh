@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-09-01 11:54:23
+ # @LastEditTime: 2020-09-01 16:06:33
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -101,7 +101,7 @@ add_sudo_group() {
 
   log_info "设置sudo权限"
   # 添加sudo账户的权限
-  local add_group_cfg="%${YUNXIAO_GROUP:-yunxiao} ALL=(ALL) NOPASSWD:/usr/bin/docker,/bin/cp,/usr/sbin/nginx"
+  local add_group_cfg="%${YUNXIAO_GROUP:-yunxiao} ALL=(ALL) NOPASSWD:/usr/bin/docker,/bin/cp,/usr/sbin/nginx,/usr/bin/netstat"
   # 传递换进变量到sudo账户
   local add_env_cfg='Defaults env_keep += "PATH"'
   # tty设置,适合sudo-1.6.9-1.7.2

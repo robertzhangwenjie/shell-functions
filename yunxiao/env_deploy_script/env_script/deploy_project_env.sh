@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-01 12:05:09
+ # @LastEditTime: 2020-09-01 18:39:31
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -127,4 +127,12 @@ echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH
 get_app_log
 
 action "应用部署成功" /bin/true
+
+# 打印内部访问地址
+host_internal_ip=`get_internal_ip`
+[ $? -eq 0 ] && log_info "内部访问地址:http://${host_internal_ip}:${PORT}"
+# 打印外部放嗯地址
+host_external_ip=`get_external_ip`
+[ $? -eq 0 ] && log_info "外部访问地址:http://${host_external_ip}:${PORT}"
+
 exit 0

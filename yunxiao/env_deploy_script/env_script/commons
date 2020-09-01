@@ -105,8 +105,13 @@ get_project_antx_properties() {
   fi
 
   rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
-  log_info "获取应用配置项: \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}&from=xx\""
-  curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
+  # 配置项获取地址
+  log_info "获取应用配置项: ${GET_ANTX_PROPERTIES_URL}"
+  curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}"
+
+  if [ $? -ne 0 ];then
+    project_log_error_exit "获取配置项失败，请检查配置项api地址是否正确"
+  fi
 
   # 将当前环境的配置项设置为环境变量
   if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]]; then
@@ -122,11 +127,8 @@ get_project_antx_properties() {
       echo "$key=$value" >>$ENV_PROPERTIES_FILE
     done
     return 0
-  elif [ -f antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
+  else
     log_info "应用配置项为空"
-    return 1
-  elif [ ! -e antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
-    log_error "应用配置获取失败,请检查配置项API是否设置正确"
     return 1
   fi
 }
@@ -219,7 +221,7 @@ check_deploy_status() {
     local docker_status=$(sudo docker inspect -f '{{.State.Running}}' ${APP_NAME}-${ENV_TYPE})
     [ ! $? -eq 0 ] && project_log_error_exit "容器运行状态异常，部署失败"
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
-    do_it netstat -anop | grep -w "LISTEN" | grep -w ${PORT}
+    sudo netstat -anop | grep -w "LISTEN" | grep -w ${PORT}
     if [ $? -eq 0 ]; then
       log_info "nginx监听正常"
     else
@@ -274,6 +276,21 @@ get_app_log() {
   else
     log_error "获取日志失败"
   fi
+}
+
+# 获取主机内网ip
+get_internal_ip() {
+  local internal_ip external_ip
+  internal_ip=`hostname -I | awk '{print $1}'`
+  [ $? -eq 0 ] && echo $internal_ip || return 1
+}
+
+# 获取主机公网ip
+get_external_ip() {
+  local external_ip
+  # 设置连接超时时间10s
+  external_ip=`curl  --connect-timeout 10 ipinfo.io | jq .ip`
+  [ $? -eq 0 ] && echo $external_ip || return 1
 }
 
 # 部署war包
@@ -336,7 +353,7 @@ deploy_tgz() {
   log_info "generating nginx config"
 
   # 配置项拥有location和backend_url时启用nginx.location模板
-  if [ -n "$location" -o -n "$backend_url"];then
+  if [ -n "$location" -a -n "$backend_url" ];then
     log_info "启用nginx-location模板"
     NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_LOCATION
   else
@@ -344,11 +361,14 @@ deploy_tgz() {
     NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE
   fi
 
+  # 定义"$"符号的变量，在模板替换时，如果不希望被识别为变量的，则可以使用${DOLLOR}进行替换
+  DOLLAR="$"
   eval "cat <<EOF
 $(<$NGINX_TEMPLATE_PATH)
 EOF" >${HOME}/$NGINX_CONF
   # 查看配置并复制到nginx配置目录下
-  cat ${HOME}/$NGINX_CONF > ${NGINX_CONFIG_DIR}/$NGINX_CONF
+  cat ${HOME}/$NGINX_CONF
+  cp ${HOME}/$NGINX_CONF ${NGINX_CONFIG_DIR}/$NGINX_CONF
 
   [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
 
