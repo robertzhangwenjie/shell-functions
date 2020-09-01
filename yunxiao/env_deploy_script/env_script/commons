@@ -336,7 +336,7 @@ deploy_tgz() {
   log_info "generating nginx config"
 
   # 配置项拥有location和backend_url时启用nginx.location模板
-  if [ -n $location -o -n $backend_url];then
+  if [ -n "$location" -o -n "$backend_url"];then
     log_info "启用nginx-location模板"
     NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_LOCATION
   else
