@@ -16,14 +16,17 @@
    1. 解压构建的部署包，根据应用配置项location和backend_url来选择nginx的模板
    2. 程序根据模板和配置项自动生成nginx配置文件
    3. nginx配置文件中的root指令所对应的地址默认为$HOME/$APP_NAME,因此要求构建的部署包解压后目录名称与应用名称一致
+   4. 运行nginx的用户需要拥有读取其他用户家目录的权利，最好以root账户运行Nginx
 
 
 ### 使用步骤
 
 1. 修改```conf/env.cfg```中的配置
     ```shell
-    # 配置项api地址,如果是多租户则需要加上group=租户id
-    GET_ANTX_PROPERTIES_URL="https://devops.yunxiao.com/aenv-config/api/export/exportAntxProperties"
+    # 配置项api地址
+    GET_ANTX_PROPERTIES_API="http://devops.yunxiaodemo.com/aenv-config/api/export/exportAntxProperties"
+    # 配置项获取地址，单租户时，不需要group参数
+    GET_ANTX_PROPERTIES_URL="${GET_ANTX_PROPERTIES_API}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&group=52"
 
     #显示log的行数
     LOG_LINE_NUM=100 

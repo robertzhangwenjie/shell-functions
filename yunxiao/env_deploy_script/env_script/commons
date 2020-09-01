@@ -106,7 +106,7 @@ get_project_antx_properties() {
 
   rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
   # 配置项获取地址
-  log_info "获取应用配置项: ${GET_ANTX_PROPERTIES_URL}"
+  log_info "应用配置项地址: ${GET_ANTX_PROPERTIES_URL}"
   curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}"
 
   if [ $? -ne 0 ];then
@@ -115,7 +115,7 @@ get_project_antx_properties() {
 
   # 将当前环境的配置项设置为环境变量
   if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]]; then
-    log_info "配置项内容：$(<antx.properties.${APP_NAME}.${ENV_TYPE})"
+    log_info "配置项内容\n：$(<antx.properties.${APP_NAME}.${ENV_TYPE})"
     echo '#!/bin/bash' >$ENV_PROPERTIES_FILE
     cat $HOME/antx.properties.$APP_NAME.$ENV_TYPE | while read line; do
       origin_key=$(echo $line | awk -F"=" '{print $1}')
@@ -267,8 +267,13 @@ check_url() {
 # 获取应用日志
 get_app_log() {
   log_info "获取应用服务最新日志"
-  if [[ "$DEPLOY_TYPE" =~ (jar|nginx) ]]; then
+  if [[ "$DEPLOY_TYPE" == "jar" ]]; then
     tail -${LOG_LINE_NUM} ${APP_LOG}
+  elif [ "$DEPLOY_TYPE" == "nginx" ]; then
+    log_info "获取nginx访问日志："
+    tail -${LOG_LINE_NUM} ${HOME}/$NGINX_ACCESS_LOG
+    log_info "获取nginx错误日志："
+    tail -${LOG_LINE_NUM} ${HOME}/$NGINX_ERROR_LOG
   elif [ "$DEPLOY_TYPE" == "docker" ]; then
     sudo docker logs --tail ${LOG_LINE_NUM} ${APP_NAME}-${ENV_TYPE}
   elif [ "$DEPLOY_TYPE" == "war" ]; then
@@ -289,7 +294,7 @@ get_internal_ip() {
 get_external_ip() {
   local external_ip
   # 设置连接超时时间10s
-  external_ip=`curl  --connect-timeout 10 ipinfo.io | jq .ip`
+  external_ip=`curl -s --connect-timeout 10 ipinfo.io | jq .ip | sed "s@\"@@g"`
   [ $? -eq 0 ] && echo $external_ip || return 1
 }
 
@@ -350,7 +355,7 @@ deploy_tgz() {
   log_info "Starting deploy ${deploy_package}"
 
   # 生成nginx配置文件，根据ENV_TYPE.APP_NAME.com作为域名 NGINX_HTML_DIR/APP_NAME作为root
-  log_info "generating nginx config"
+  log_info "generate nginx config"
 
   # 配置项拥有location和backend_url时启用nginx.location模板
   if [ -n "$location" -a -n "$backend_url" ];then
@@ -416,7 +421,7 @@ start_env() {
 
   # 加载配置作为全局变量
   if [ $ANTX_RESULT -eq 0 ];then
-    log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
+    log_info "加载变量文件:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
   fi
 
   # 如果部署包为docker镜像(判断是否包含":"")，则使用root权限部署

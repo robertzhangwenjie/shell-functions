@@ -2,8 +2,8 @@ server {
   server_name ${ENV_TYPE,,}.${APP_NAME}.${COMPANY:-com};
   listen ${PORT};
 
-  access_log ${HOME}/access_${APP_LOG} main;
-  error_log ${HOME}/error_${APP_LOG};
+  access_log ${HOME}/NGINX_ACCESS_LOG main;
+  error_log ${HOME}/$NGINX_ERROR_LOG;
 
   location / {
     root ${HOME}/${APP_NAME};
