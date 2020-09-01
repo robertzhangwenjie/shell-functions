@@ -15,6 +15,10 @@
 3. nginx部署流程
    1. 解压构建的部署包，根据应用配置项location和backend_url来选择nginx的模板
    2. 程序根据模板和配置项自动生成nginx配置文件
+      - 生成规则
+         1. 如果应用配置项拥有location和backend_url两个配置，则使用template/nginx.tpl.location
+         2. 如果配置项有backend_url，没有location，则使用template/nginx.tpl.backend
+         3. 如果配置项既没有backend_url，也没有location，则使用template/nginx.tpl.default
    3. nginx配置文件中的root指令所对应的地址默认为$HOME/$APP_NAME,因此要求构建的部署包解压后目录名称与应用名称一致
    4. 运行nginx的用户需要拥有读取其他用户家目录的权利，最好以root账户运行Nginx
 
