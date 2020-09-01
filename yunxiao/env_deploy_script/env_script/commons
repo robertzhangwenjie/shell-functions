@@ -104,8 +104,8 @@ get_project_antx_properties() {
     project_log_error_exit "appNme and envType cannot be empty"
   fi
 
-  sudo rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
-  log_info "获取应用配置项: \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}\""
+  rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
+  log_info "获取应用配置项: \"$GET_ANTX_PROPERTIES_URL?appName=$APP_NAME&antxType=$ENV_TYPE&crid=${CRID}&from=xx\""
   curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&from=xx"
 
   # 将当前环境的配置项设置为环境变量
@@ -124,7 +124,7 @@ get_project_antx_properties() {
   elif [ -f antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
     log_info "应用配置项为空"
   elif [ ! -e antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
-    log_error "应用配置获取失败"
+    log_error "应用配置获取失败,请检查配置项API是否设置正确"
   fi
 }
 
