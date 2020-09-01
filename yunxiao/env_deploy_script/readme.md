@@ -1,16 +1,15 @@
 ## env部署脚本说明
 
-### 使用说明
+### 脚本说明
 1. 支持docker、jar、war、tar.gz格式的包部署
-  - 判断部署包类型说明
     - 如果包的名称包含":"，则匹配docker方式部署
     - 根据后缀匹配.jar、.war来匹配jar和war包方式部署
     - 根据后缀匹配.tar.gz来匹配nginx部署
   
 2. nginx部署流程
-  - 解压构建的部署包，根据应用配置项location和backend_url来选择nginx的模板
-  - 程序根据模板和配置项自动生成nginx配置文件
-  - nginx配置文件中的root指令所对应的地址默认为$HOME/$APP_NAME,因此要求构建的部署包解压后目录名称与应用名称一致
+    - 解压构建的部署包，根据应用配置项location和backend_url来选择nginx的模板
+    - 程序根据模板和配置项自动生成nginx配置文件
+    - nginx配置文件中的root指令所对应的地址默认为$HOME/$APP_NAME,因此要求构建的部署包解压后目录名称与应用名称一致
 
 
 ### 使用步骤
