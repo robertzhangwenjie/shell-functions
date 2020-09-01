@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-01 09:06:59
+ # @LastEditTime: 2020-09-01 12:05:09
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -54,7 +54,6 @@ if [ $? -eq 0 ]; then
   NGINX_CONFIG_DIR=${NGINX_HOME}/conf.d
   NGINX_SBIN_PATH=/usr/sbin/nginx
 else
-  NGINX_HOME=/usr/install/nginx
   NGINX_CONFIG_DIR=$NGINX_HOME/conf/conf.d
   NGINX_SBIN_PATH=${NGINX_HOME}/sbin/nginx
 fi

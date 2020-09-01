@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-09-01 11:23:56
+ # @LastEditTime: 2020-09-01 11:54:23
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -33,10 +33,10 @@ upload_env_script() {
   chmod 755 -R env_script/*
   do_it zip -qr ${ENV_SCRIPT} env_script/*
   log_info "上传 ${ENV_SCRIPT}:$UPLOAD_SCRIPT"
-  ENV_SCRIPT_ADDRESS=`eval $UPLOAD_SCRIPT`
+  ENV_SCRIPT_ADDRESS=$(eval $UPLOAD_SCRIPT)
 
-  if [ $? -eq 0 ];then
-    local response_code=`$UPLOAD_SCRIPT | jq .status`
+  if [ $? -eq 0 ]; then
+    local response_code=$($UPLOAD_SCRIPT | jq .status)
     if [ "$response_code" == "200" ]; then
       log_info "上传成功，下载地址：$ENV_SCRIPT_ADDRESS"
       return 0
@@ -53,7 +53,7 @@ upload_env_script() {
 # 下载env_script脚本包
 get_env_script() {
   upload_env_script
-  if [ $? -eq 0 ];then
+  if [ $? -eq 0 ]; then
     log_info "downloading ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}"
     wget -nv -O ${HOME}/${ENV_SCRIPT} ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
 
@@ -73,11 +73,11 @@ add_sudo_cfg() {
 
   # 判断是否拥有sudo权限，如果没有就添加
   if [ $isCfgExist -eq 0 ]; then
-    log_info "add sudo cfg success: $sudo_cfg" 
+    log_info "add sudo cfg success: $sudo_cfg"
   else
     echo "$sudo_cfg" >>/etc/sudoers &&
-      log_info "add sudo cfg success: $sudo_cfg"  ||
-      log_error "add sudo cfg failed: $sudo_cfg" 
+      log_info "add sudo cfg success: $sudo_cfg" ||
+      log_error "add sudo cfg failed: $sudo_cfg"
   fi
 }
 
@@ -85,8 +85,8 @@ add_sudo_cfg() {
 del_sudo_cfg() {
   # 匹配不以#开头的配置项，然后添加#
   log_info "注释掉$1所在的行"
-  sed -i "s/^[^#].*$1$/#&/g" /etc/sudoers 
-  
+  sed -i "s/^[^#].*$1$/#&/g" /etc/sudoers
+
 }
 
 # 添加用户组，并设置sudo权限
@@ -96,8 +96,8 @@ add_sudo_group() {
   set +H
 
   log_info "添加用户组"
-  grep "^${YUNXIAO_GOURP}" | /etc/group
-  [ $? -eq 0 ] && do_it groupadd ${YUNXIAO_GOURP} || log_warning "用户组已存在:${YUNXIAO_GOURP}"
+  grep "^${YUNXIAO_GOURP}" /etc/group >/dev/null
+  [ $? -ne 0 ] && do_it groupadd ${YUNXIAO_GOURP} || log_warning "用户组已存在:${YUNXIAO_GOURP}"
 
   log_info "设置sudo权限"
   # 添加sudo账户的权限
@@ -109,7 +109,6 @@ add_sudo_group() {
   # tty设置，适合sudo-1.7.2+
   local add_tty_cfg='Defaults visiblepw'
   local del_tty_cfg2='!visiblepw'
-
 
   add_sudo_cfg $add_group_cfg
   add_sudo_cfg $add_env_cfg
@@ -136,9 +135,9 @@ install_env_script() {
 add_user() {
   local username=$1
   log_info "添加用户${username}"
-  id -u ${username} > /dev/null
+  id -u ${username} >/dev/null
   if [ $? -eq 0 ]; then
-    log_info "用户已存在，将其添加到group:${YUNXIAO_GOURP}" 
+    log_info "用户已存在，将其添加到group:${YUNXIAO_GOURP}"
     usermod -a -G ${YUNXIAO_GOURP} ${username}
   else
     do_it useradd $username -p $username -G ${YUNXIAO_GOURP}
@@ -156,8 +155,15 @@ get_env_script
 add_sudo_group
 # 添加用户，并copy脚本到对应家目录下
 if [ -n "$1" ]; then
-  for user in $@;do
-    add_user $user
-  done
+  case $1 in
+  all)
+    users=$(ls /home)
+    for user in $users; do
+      add_user $user
+    done
+    ;;
+  *)
+    add_user $1
+    ;;
+  esac
 fi
-
