@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-08-31 23:19:59
+ # @LastEditTime: 2020-09-01 11:23:56
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -96,7 +96,8 @@ add_sudo_group() {
   set +H
 
   log_info "添加用户组"
-  do_it groupadd ${YUNXIAO_GOURP}
+  grep "^${YUNXIAO_GOURP}" | /etc/group
+  [ $? -eq 0 ] && do_it groupadd ${YUNXIAO_GOURP} || log_warning "用户组已存在:${YUNXIAO_GOURP}"
 
   log_info "设置sudo权限"
   # 添加sudo账户的权限
@@ -159,3 +160,4 @@ if [ -n "$1" ]; then
     add_user $user
   done
 fi
+

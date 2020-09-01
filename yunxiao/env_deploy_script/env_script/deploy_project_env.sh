@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-08-30 09:19:28
+ # @LastEditTime: 2020-09-01 09:06:59
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -106,6 +106,8 @@ clean_env
 
 # 获取当前环境的部署配置项
 get_project_antx_properties
+# 配置项获取结果
+ANTX_RESULT=$?
 
 # 启动环境，开始部署
 start_env

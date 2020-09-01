@@ -121,10 +121,13 @@ get_project_antx_properties() {
       log_info "获取配置项:$key=$value"
       echo "$key=$value" >>$ENV_PROPERTIES_FILE
     done
+    return 0
   elif [ -f antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
     log_info "应用配置项为空"
+    return 1
   elif [ ! -e antx.properties.${APP_NAME}.${ENV_TYPE} ]; then
     log_error "应用配置获取失败,请检查配置项API是否设置正确"
+    return 1
   fi
 }
 
@@ -217,7 +220,13 @@ check_deploy_status() {
     [ ! $? -eq 0 ] && project_log_error_exit "容器运行状态异常，部署失败"
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
     do_it netstat -anop | grep -w "LISTEN" | grep -w ${PORT}
-    [ $? -eq 0 ] && log_info "nginx监听正常" || project_log_error_exit "应用部署失败"
+    if [ $? -eq 0 ]; then
+      log_info "nginx监听正常"
+    else
+      log_info "nginx监听失败"
+      do_it rm ${NGINX_CONFIG_DIR}/${NGINX_CONF}
+      project_log_error_exit "应用部署失败"
+    fi
   else
     checkPIDfile
     [ ! $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
@@ -324,11 +333,22 @@ deploy_tgz() {
   log_info "Starting deploy ${deploy_package}"
 
   # 生成nginx配置文件，根据ENV_TYPE.APP_NAME.com作为域名 NGINX_HTML_DIR/APP_NAME作为root
-  log_info "generate nginx config"
-  eval "cat <<EOF 
-  $(<$NGINX_TEMPLATE) 
-  EOF"
-  >${NGINX_CONFIG_DIR}/$NGINX_CONF
+  log_info "generating nginx config"
+
+  # 配置项拥有location和backend_url时启用nginx.location模板
+  if [ -n $location -o -n $backend_url];then
+    log_info "启用nginx-location模板"
+    NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_LOCATION
+  else
+    log_info "启动nginx默认模板"
+    NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE
+  fi
+
+  eval "cat <<EOF
+$(<$NGINX_TEMPLATE_PATH)
+EOF" >${HOME}/$NGINX_CONF
+  # 查看配置并复制到nginx配置目录下
+  cat ${HOME}/$NGINX_CONF > ${NGINX_CONFIG_DIR}/$NGINX_CONF
 
   [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
 
@@ -375,7 +395,9 @@ start_env() {
   deploy_package=$(echo ${TAR_ADDRESS##*/})
 
   # 加载配置作为全局变量
-  log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
+  if [ $ANTX_RESULT -eq 0 ];then
+    log_info "加载配置项:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
+  fi
 
   # 如果部署包为docker镜像(判断是否包含":"")，则使用root权限部署
   if [[ $deploy_package =~ .+:.+ ]]; then
