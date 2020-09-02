@@ -6,16 +6,16 @@ source /etc/profile
 # 执行语句并打印失败或成功
 do_it() {
   local execute_cmd ret
-  execute_cmd="$@"
+  execute_cmd="$*"
   ret=$($execute_cmd)
   local isSuccess=$?
   if [ $isSuccess -eq 0 ]; then
     action "$execute_cmd" true
-    echo $ret
+    echo "$ret"
     return 0
   else
     action "$execute_cmd" false
-    echo $ret
+    echo "$ret"
     return 1
   fi
 }
@@ -24,7 +24,7 @@ do_it() {
 killAllChildren() {
   echo "kill all children process..."
   for proc in $(jobs -p); do
-    kill -9 $proc
+    kill -9 "$proc"
   done
 }
 
@@ -109,7 +109,7 @@ get_project_antx_properties() {
   log_info "应用配置项地址: ${GET_ANTX_PROPERTIES_URL}"
   curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}"
 
-  if [ $? -ne 0 ];then
+  if [ $? -ne 0 ]; then
     project_log_error_exit "获取配置项失败，请检查配置项api地址是否正确"
   fi
 
@@ -151,10 +151,10 @@ kill_ws() {
 
   # 清理docker
   log_info "清理docker服务"
-  sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
+  sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep "${APP_NAME}-${ENV_TYPE}"
 
   if [ $? -eq 0 ]; then
-    do_it sudo docker rm -f ${APP_NAME}-${ENV_TYPE}
+    do_it sudo docker rm -f "${APP_NAME}-${ENV_TYPE}"
   else
     log_info "未发现该应用正在运行docker服务"
   fi
@@ -164,11 +164,10 @@ kill_ws() {
   pidofproc nginx
   if [ $? -eq 0 ]; then
     # 查看是否有该应用程序配置
-    ls ${NGINX_CONFIG_DIR} | grep -w ${NGINX_CONF}
-    if [ $? -eq 0 ]; then
+    if [ -e "${NGINX_CONFIG_DIR}/${NGINX_CONF}" ]; then
       log_info "发现该应用nginx配置文件:${NGINX_CONF}"
-      do_it rm -f ${NGINX_CONFIG_DIR}/${NGINX_CONF}
-      do_it sudo ${NGINX_SBIN_PATH} -s reload
+      do_it rm -f "${NGINX_CONFIG_DIR}/${NGINX_CONF}"
+      do_it sudo "${NGINX_SBIN_PATH}" -s reload
       log_info "清理完成，并已重启nginx"
     else
       log_info "未发现该应用程序的nginx配置文件"
@@ -180,9 +179,11 @@ kill_ws() {
 
 # 删除工作区的文件除了传入的文件名
 rm_except() {
-  cd ${WORK_DIR}
-  local all_files=$(ls)
-  local except_files="$@"
+  cd ${WORK_DIR} || return
+
+  local all_files except_files
+  all_files=$(ls)
+  except_files="$@"
   log_info "清除目录$WORK_DIR,除了文件:$except_files"
   for file in $all_files; do
     local del=true
@@ -218,20 +219,20 @@ clean_env() {
 check_deploy_status() {
   if [ "$DEPLOY_TYPE" == "docker" ]; then
     # 获取docker部署状态
-    local docker_status=$(sudo docker inspect -f '{{.State.Running}}' ${APP_NAME}-${ENV_TYPE})
-    [ ! $? -eq 0 ] && project_log_error_exit "容器运行状态异常，部署失败"
+    local docker_status
+    docker_status=$(sudo docker inspect -f '{{.State.Running}}' "${APP_NAME}-${ENV_TYPE}")
+    [ "$docker_status" != "true" ] && project_log_error_exit "容器运行状态异常，部署失败"
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
     sudo netstat -anop | grep -w "LISTEN" | grep -w ${PORT}
     if [ $? -eq 0 ]; then
       log_info "nginx监听正常"
     else
       log_info "nginx监听失败"
-      do_it rm ${NGINX_CONFIG_DIR}/${NGINX_CONF}
+      do_it rm "${NGINX_CONFIG_DIR}/${NGINX_CONF}"
       project_log_error_exit "应用部署失败"
     fi
   else
-    checkPIDfile
-    [ ! $? -eq 0 ] && project_log_error_exit "deploy failed for pidFile is empty"
+    ! checkPIDfile && project_log_error_exit "deploy failed for pidFile is empty"
   fi
   check_url
 }
@@ -271,11 +272,13 @@ get_app_log() {
     tail -${LOG_LINE_NUM} ${APP_LOG}
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
     log_info "获取nginx访问日志："
-    tail -${LOG_LINE_NUM} ${HOME}/$NGINX_ACCESS_LOG
-    log_info "获取nginx错误日志："
-    tail -${LOG_LINE_NUM} ${HOME}/$NGINX_ERROR_LOG
+    tail -${LOG_LINE_NUM} "${HOME}/$NGINX_ACCESS_LOG"
+    if [ -s "${HOME}/$NGINX_ERROR_LOG" ];then
+      log_info "nginx错误日志："
+      tail -${LOG_LINE_NUM} "${HOME}/$NGINX_ERROR_LOG"
+    fi
   elif [ "$DEPLOY_TYPE" == "docker" ]; then
-    sudo docker logs --tail ${LOG_LINE_NUM} ${APP_NAME}-${ENV_TYPE}
+    sudo docker logs --tail ${LOG_LINE_NUM} "${APP_NAME}-${ENV_TYPE}"
   elif [ "$DEPLOY_TYPE" == "war" ]; then
     tail -${LOG_LINE_NUM} ${TOMCAT_LOG}
   else
@@ -286,16 +289,16 @@ get_app_log() {
 # 获取主机内网ip
 get_internal_ip() {
   local internal_ip external_ip
-  internal_ip=`hostname -I | awk '{print $1}'`
-  [ $? -eq 0 ] && echo $internal_ip || return 1
+  internal_ip=$(hostname -I | awk '{print $1}')
+  [ $? -eq 0 ] && echo "$internal_ip" || return 1
 }
 
 # 获取主机公网ip
 get_external_ip() {
   local external_ip
   # 设置连接超时时间10s
-  external_ip=`curl -s --connect-timeout 10 ipinfo.io | jq .ip | sed "s@\"@@g"`
-  [ $? -eq 0 ] && echo $external_ip || return 1
+  external_ip=$(curl -s --connect-timeout 10 ipinfo.io | jq .ip | sed "s@\"@@g")
+  [ $? -eq 0 ] && echo "$external_ip" || return 1
 }
 
 # 部署war包
@@ -307,22 +310,22 @@ deploy_war() {
 
   if [ ! $? -eq 0 ]; then
     log_warning "下载失败，开始拷贝${TOMCAT_PATH}/${TOMCAT_VERSION}"
-    cp ${TOMCAT_PATH}/${TOMCAT_VERSION}.zip ${HOME}
+    cp "${TOMCAT_PATH}/${TOMCAT_VERSION}.zip" ${HOME}
     [ ! $? -eq 0 ] && project_log_error_exit "获取${TOMCAT_VERSION}失败"
   fi
   log_info "获取${TOMCAT_VERSION}成功"
-  unzip ${HOME}/${TOMCAT_VERSION}.zip
+  unzip "${HOME}/${TOMCAT_VERSION}.zip"
 
   log_info "Starting deploy $deploy_package"
-  #PORT1/2/3是tomcat的其他端口
-  MINUS=$(expr 8080 - $PORT)
-  PORT1=$(expr 8443 - $MINUS)
-  PORT2=$(expr 8009 - $MINUS + 20)
-  PORT3=$(expr 8005 - $MINUS + 20)
+  #PORT1/2/3是tomcat的其他端口,计算表达式不需要$
+  MINUS=$(( 8080 - PORT))
+  PORT1=$(( 8443 - MINUS))
+  PORT2=$(( 8009 - MINUS + 20))
+  PORT3=$(( 8005 - MINUS + 20))
 
   # 修改tomcat配置文件
   log_info "修改tomcat配置：PORT:${PORT}"
-  cd $TOMCAT_HOME/conf
+  cd "$TOMCAT_HOME/conf" || return
   sed -i "s/8080/$PORT/g" server.xml
   sed -i "s/8443/$PORT1/g" server.xml
   sed -i "s/8009/$PORT2/g" server.xml
@@ -331,9 +334,9 @@ deploy_war() {
   # 设置查找该pid的命令
   PID_FIND_STR="${TOMCAT_VERSION}"
   log_info "启动tomcat"
-  cd $TOMCAT_HOME/bin
+  cd "$TOMCAT_HOME/bin" || return
 
-  chmod 755 *.sh
+  chmod 755 "*.sh"
   sh startup.sh
   sleep 3
   return
@@ -358,25 +361,24 @@ deploy_tgz() {
   log_info "generate nginx config"
 
   # 配置项拥有location和backend_url时启用nginx.location模板
-  if [ -n "$location" -a -n "$backend_url" ];then
+  if [ -n "$location" ] && [ -n "$backend_url" ]; then
     log_info "启用nginx-location模板"
-    NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_LOCATION
-  elif [ -n "$backend_url" ];then
+    NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_LOCATION"
+  elif [ -n "$backend_url" ]; then
     log_info "启用nginx-backend模板"
-    NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_BACKEND
+    NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_BACKEND"
   else
     log_info "启动nginx默认模板"
-    NGINX_TEMPLATE_PATH=$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE
+    NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE"
   fi
 
   # 定义"$"符号的变量，在模板替换时，如果不希望被识别为变量的，则可以使用${DOLLOR}进行替换
-  DOLLAR="$"
+  export DOLLAR="$"
   eval "cat <<EOF
 $(<$NGINX_TEMPLATE_PATH)
 EOF" >${HOME}/$NGINX_CONF
   # 查看配置并复制到nginx配置目录下
-  cat ${HOME}/$NGINX_CONF
-  cp ${HOME}/$NGINX_CONF ${NGINX_CONFIG_DIR}/$NGINX_CONF
+  cat < "${HOME}/$NGINX_CONF" | tee "${NGINX_CONFIG_DIR}/$NGINX_CONF"
 
   [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
 
@@ -403,10 +405,10 @@ deploy_docker() {
   CONTAINER_PORT=${container_port:-${PORT}}
   log_info "PORT:${PORT},CONTAINER_PORT:${CONTAINER_PORT}"
   # 判断是否已经部署
-  sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep ${APP_NAME}-${ENV_TYPE}
-  [ $? -eq 0 ] && do_it sudo docker rm -f ${APP_NAME}-${ENV_TYPE}
+  sudo docker ps -a | awk 'NR != 1{print $(NF)}' | grep "${APP_NAME}-${ENV_TYPE}"
+  [ $? -eq 0 ] && do_it sudo docker rm -f "${APP_NAME}-${ENV_TYPE}"
   # 部署的容器名称为应用名-项目名
-  do_it sudo docker run -d --name ${APP_NAME}-${ENV_TYPE} -p ${PORT}:${CONTAINER_PORT} $imageName
+  do_it sudo docker run -d --name "${APP_NAME}-${ENV_TYPE}" -p ${PORT}:${CONTAINER_PORT} $imageName
 
 }
 
@@ -420,10 +422,10 @@ start_env() {
   zip_Suffix=".zip"
 
   # 获取构建包名
-  deploy_package=$(echo ${TAR_ADDRESS##*/})
+  deploy_package=${TAR_ADDRESS##*/}
 
   # 加载配置作为全局变量
-  if [ $ANTX_RESULT -eq 0 ];then
+  if [ "$ANTX_RESULT" -eq 0 ]; then
     log_info "加载变量文件:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
   fi
 
@@ -463,7 +465,7 @@ start_env() {
 
 # 更新部署脚本
 update_env_script() {
-  cd ${HOME}
+  cd ${HOME} || return
   log_info "starting update env_script"
   log_info "clearing env_script"
   do_it rm -rf env_script
@@ -487,6 +489,6 @@ update_env_script() {
 
   # 解压并赋权
   log_info "unzip env_script successful"
-  do_it chown -R ${USER}:${USER} /home/${USER}
+  do_it chown -R ${USER}:${USER} "/home/${USER}"
   log_info "update env_script done"
 }

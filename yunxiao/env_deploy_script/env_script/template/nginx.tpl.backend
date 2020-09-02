@@ -5,13 +5,16 @@ server {
   access_log ${HOME}/$NGINX_ACCESS_LOG main;
   error_log ${HOME}/$NGINX_ERROR_LOG;
 
+  root ${HOME}/${APP_NAME};
+
+  location = / {
+  }
+
   location / {
-    root ${HOME}/${APP_NAME};
     proxy_pass ${backend_url};
-    proxy_redirect default;
+    proxy_set_header Host ${DOLLAR}host;
   }
 
   location ~ .*\.(js|css|ico|png|jpg|eot|svg|ttf|woff|html) {
-    root ${HOME}/${APP_NAME};
   }
 }

@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-09-01 16:06:33
+ # @LastEditTime: 2020-09-02 12:45:47
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -10,11 +10,11 @@
 
 # 获取当前文件的绝对路径
 WORK_PATH=$(
-  cd $(dirname $0)
+  cd "$(dirname "$0")" || exit
   pwd
 )
 
-source $WORK_PATH/env_script/commons
+source "${WORK_PATH}"/env_script/functions
 
 YUNXIAO_GOURP=yunxiao
 UPLOAD_URL="http://package.switch.aliyun.com:9090/upload"
@@ -33,10 +33,12 @@ upload_env_script() {
   chmod 755 -R env_script/*
   do_it zip -qr ${ENV_SCRIPT} env_script/*
   log_info "上传 ${ENV_SCRIPT}:$UPLOAD_SCRIPT"
-  ENV_SCRIPT_ADDRESS=$(eval $UPLOAD_SCRIPT)
+  ENV_SCRIPT_ADDRESS=$(eval "${UPLOAD_SCRIPT}")
 
   if [ $? -eq 0 ]; then
-    local response_code=$($UPLOAD_SCRIPT | jq .status)
+    local response_code
+
+    response_code=$($UPLOAD_SCRIPT | jq .status)
     if [ "$response_code" == "200" ]; then
       log_info "上传成功，下载地址：$ENV_SCRIPT_ADDRESS"
       return 0
@@ -55,13 +57,13 @@ get_env_script() {
   upload_env_script
   if [ $? -eq 0 ]; then
     log_info "downloading ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}"
-    wget -nv -O ${HOME}/${ENV_SCRIPT} ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}
+    wget -nv -O "${HOME}"/${ENV_SCRIPT} ${DOWNLOAD_URL}/"${ENV_SCRIPT_ADDRESS}"
 
     [ ! $? -eq 0 ] && log_info "download ${ENV_SCRIPT_ADDRESS} failed"
     log_info "downloaded ${ENV_SCRIPT} to ${HOME} successful"
   else
     log_info "复制${ENV_SCRIPT} 到 ${HOME}"
-    cp ${WORK_PATH}/$ENV_SCRIPT ${HOME}
+    cp "${WORK_PATH}"/$ENV_SCRIPT "${HOME}"
   fi
 }
 
@@ -96,8 +98,11 @@ add_sudo_group() {
   set +H
 
   log_info "添加用户组"
-  grep "^${YUNXIAO_GOURP}" /etc/group >/dev/null
-  [ $? -ne 0 ] && do_it groupadd ${YUNXIAO_GOURP} || log_warning "用户组已存在:${YUNXIAO_GOURP}"
+  if grep "^${YUNXIAO_GOURP}" /etc/group >/dev/null; then
+    do_it groupadd ${YUNXIAO_GOURP}
+  else
+    log_warning "用户组已存在:${YUNXIAO_GOURP}"
+  fi
 
   log_info "设置sudo权限"
   # 添加sudo账户的权限
@@ -110,11 +115,11 @@ add_sudo_group() {
   local add_tty_cfg='Defaults visiblepw'
   local del_tty_cfg2='!visiblepw'
 
-  add_sudo_cfg $add_group_cfg
-  add_sudo_cfg $add_env_cfg
-  add_sudo_cfg $add_tty_cfg
-  del_sudo_cfg $del_tty_cfg1
-  del_sudo_cfg $del_tty_cfg2
+  add_sudo_cfg "$add_group_cfg"
+  add_sudo_cfg "$add_env_cfg"
+  add_sudo_cfg "$add_tty_cfg"
+  del_sudo_cfg "$del_tty_cfg1"
+  del_sudo_cfg "$del_tty_cfg2"
 
   # 还原"!"执行历史功能
   set -H
@@ -145,7 +150,7 @@ add_user() {
   install_env_script $username
 }
 
-cd $WORK_PATH
+cd "${WORK_PATH}"  || exit
 
 # 安装依赖
 install_dependeces
@@ -159,11 +164,11 @@ if [ -n "$1" ]; then
   all)
     users=$(ls /home)
     for user in $users; do
-      add_user $user
+      add_user "$user"
     done
     ;;
   *)
-    add_user $1
+    add_user "$1"
     ;;
   esac
 fi

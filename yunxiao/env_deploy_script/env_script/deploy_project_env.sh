@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-01 20:02:44
+ # @LastEditTime: 2020-09-02 13:38:20
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -19,7 +19,7 @@
 # 获取当前文件的绝对路径
 
 ENV_SCRIPT_PATH=$(
-  cd $(dirname $0)
+  cd $(dirname $0) || return
   pwd
 )
 
@@ -34,8 +34,8 @@ CHECK_URL=$7
 # 部署完成后等待时间
 SLEEP_TIME=20
 
-source ${ENV_SCRIPT_PATH}/commons
-source ${ENV_SCRIPT_PATH}/conf/env.cfg
+source "${ENV_SCRIPT_PATH}/functions"
+source "${ENV_SCRIPT_PATH}/conf/env.cfg"
 
 # java相关变量
 if [ -z "$JAVA_HOME" ]; then
@@ -129,10 +129,8 @@ get_app_log
 action "应用部署成功" /bin/true
 
 # 打印外部放嗯地址
-host_external_ip=`get_external_ip`
-[ $? -eq 0 ] && log_info "外部访问地址:http://${host_external_ip}:${PORT}"
+host_external_ip=$(get_external_ip) && log_info "外部访问地址:http://${host_external_ip}:${PORT}"
 # 打印内部访问地址
-host_internal_ip=`get_internal_ip`
-[ $? -eq 0 ] && log_info "内部访问地址:http://${host_internal_ip}:${PORT}"
+host_internal_ip=$(get_internal_ip) && log_info "内部访问地址:http://${host_internal_ip}:${PORT}"
 
 exit 0
