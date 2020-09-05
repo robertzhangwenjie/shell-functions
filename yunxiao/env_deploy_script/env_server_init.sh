@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-09-05 14:07:16
+ # @LastEditTime: 2020-09-05 18:34:56
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -206,7 +206,7 @@ init_server() {
   add_sudo_group
   # 添加nginx配置权限
   log_info "添加nginx配置目录写入权限"
-  do_it chown -R 770 "${NGINX_CONFIG_DIR:?}"
+  do_it chmod -R 770 "${NGINX_CONFIG_DIR:?}"
   do_it chown -R root:${YUNXIAO_GROUP:?} "$NGINX_CONFIG_DIR"
 }
 

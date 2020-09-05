@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-05 14:08:51
+ # @LastEditTime: 2020-09-05 21:39:46
  # @LastEditors: robert zhang
 # @Description: 初始化执行脚本
 # @
@@ -12,18 +12,29 @@
 # $2:公共环境--环境类型
 
 source "$HOME/env_script/functions"
+source "$HOME/env_script/conf/env.cfg"
 
 export APP_NAME=$1
 export ENV_TYPE=$2
-#根据agent的日志配置项决定
-LOG_DIR=logs
+
+if [ -z "$APP_NAME" ]; then 
+  log_error "清理失败，缺少参数：appName"
+  exit 1 
+fi
+
+if [ -z "$ENV_TYPE" ]; then 
+  log_error "清理失败，缺少参数：envTypeAlias"
+  exit 1 
+fi
 
 # 清理环境
 clean_env
 
-# 清空log目录
-[ -d "$LOG_DIR" ] && rm -rf "${LOG_DIR:?}/*"
-
-mkdir $LOG_DIR
+log_info "创建日志目录:$LOG_DIR"
+if [ -d "$LOG_DIR" ] && [ "$LOG_DIR" != "/" ]; then
+  do_it rm -rf ${LOG_DIR:?}/*
+else
+  do_it mkdir $LOG_DIR
+fi
 
 exit 0
