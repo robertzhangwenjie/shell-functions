@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-02 13:38:20
+ # @LastEditTime: 2020-09-05 00:16:26
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -23,45 +23,19 @@ ENV_SCRIPT_PATH=$(
   pwd
 )
 
-APP_NAME=$1
-CRID=$2
-ENV_TYPE=$3
-TAR_ADDRESS=$4
-NEED_RESTORE=$5
-DEPLOY_ID=$6
-CHECK_URL=$7
+export APP_NAME=$1
+export CRID=$2
+export ENV_TYPE=$3
+export TAR_ADDRESS=$4
+export NEED_RESTORE=$5
+export DEPLOY_ID=$6
+export CHECK_URL=$7
 
 # 部署完成后等待时间
 SLEEP_TIME=20
 
 source "${ENV_SCRIPT_PATH}/functions"
 source "${ENV_SCRIPT_PATH}/conf/env.cfg"
-
-# java相关变量
-if [ -z "$JAVA_HOME" ]; then
-  export JAVA_HOME=${JAVA8_HOME}
-  export PATH=$JAVA_HOME/bin:$PATH
-  export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
-fi
-
-# 打印java相关信息
-java -version
-
-# 检查nginx是否为rpm安装
-rpm -ql nginx >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-  NGINX_HOME=/etc/nginx
-  NGINX_CONFIG_DIR=${NGINX_HOME}/conf.d
-  NGINX_SBIN_PATH=/usr/sbin/nginx
-else
-  NGINX_CONFIG_DIR=$NGINX_HOME/conf/conf.d
-  NGINX_SBIN_PATH=${NGINX_HOME}/sbin/nginx
-fi
-
-# 打印nginx相关信息
-echo "NGINX_HOME=${NGINX_HOME}" 
-echo "NGINX_CONFIG_DIR=${NGINX_CONFIG_DIR}"
-echo "NGINX_SBIN_PATH=${NGINX_SBIN_PATH}"
 
 # INT -- CTRL + C
 # TERM 要求程序正常退出
@@ -105,8 +79,6 @@ clean_env
 
 # 获取当前环境的部署配置项
 get_project_antx_properties
-# 配置项获取结果
-ANTX_RESULT=$?
 
 # 启动环境，开始部署
 start_env
@@ -128,7 +100,7 @@ get_app_log
 
 action "应用部署成功" /bin/true
 
-# 打印外部放嗯地址
+# 打印外部访问地址
 host_external_ip=$(get_external_ip) && log_info "外部访问地址:http://${host_external_ip}:${PORT}"
 # 打印内部访问地址
 host_internal_ip=$(get_internal_ip) && log_info "内部访问地址:http://${host_internal_ip}:${PORT}"

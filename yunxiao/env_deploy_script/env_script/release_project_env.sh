@@ -2,7 +2,7 @@
 ###
  # @Author: robert zhang
  # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-02 12:18:27
+ # @LastEditTime: 2020-09-05 14:09:18
  # @LastEditors: robert zhang
  # @Description: 释放环境脚本
  # @
@@ -12,7 +12,7 @@
 # $2：项目的CRID, 如果是公共环境则是trunk
 # $3: 环境类型
 
-source $HOME/env_script/functions
+source "$HOME/env_script/functions"
 
 export APP_NAME=$1
 export CRID=$2

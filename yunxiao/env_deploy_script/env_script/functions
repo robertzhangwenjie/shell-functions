@@ -1,21 +1,26 @@
 #!/bin/bash
 
-source /etc/rc.d/init.d/functions
+# source /etc/rc.d/init.d/functions
 source /etc/profile
 
-# 执行语句并打印失败或成功
+# 控制程序所有命令执行的信息提示
 do_it() {
-  local execute_cmd ret
+  local execute_cmd tempfile
   execute_cmd="$*"
-  ret=$($execute_cmd)
-  local isSuccess=$?
-  if [ $isSuccess -eq 0 ]; then
-    action "$execute_cmd" true
-    echo "$ret"
+  tempfile=`mktemp`
+  $execute_cmd > $tempfile 2>&1
+  if [ $? -eq 0 ]; then
+    # 命令执行成功，且日志级别未DEBUG时，打印执行成功日志
+    if [ "$LOG_LEVEL" = "CMD" ];then
+      log_cmd "$execute_cmd"
+      cat $tempfile
+    fi 
+    rm $tempfile
     return 0
   else
-    action "$execute_cmd" false
-    echo "$ret"
+    # 命令执行失败则打印error日志
+    log_error "$execute_cmd"
+    cat $tempfile && rm $tempfile
     return 1
   fi
 }
@@ -77,9 +82,19 @@ log_warning() {
   echo -e "$(date +"%Y-%m-%d %H:%M:%S") \033[33m[WARNING]\033[0m" $1
 }
 
-# 打印错误日志
+# 打印ERROR级别日志
 log_error() {
   echo -e "$(date +"%Y-%m-%d %H:%M:%S") \033[31m[ERROR]\033[0m" $1
+}
+
+# 打印CMD级别日志，该级别将打印所有命令执行日志
+log_cmd() {
+  echo -e "\033[37m******\033[0m" $1
+}
+
+# 打印命令执行成功日志
+log_success() {
+  echo -e "$(date +"%Y-%m-%d %H:%M:%S") \033[32m[SUCCESS]\033[0m" $1
 }
 
 # 退出程序
@@ -104,28 +119,28 @@ get_project_antx_properties() {
     project_log_error_exit "appNme and envType cannot be empty"
   fi
 
-  rm -rf $HOME/antx.properties.$APP_NAME.$ENV_TYPE
+  do_it rm -rf "$HOME/antx.properties.$APP_NAME.$ENV_TYPE"
   # 配置项获取地址
   log_info "应用配置项地址: ${GET_ANTX_PROPERTIES_URL}"
-  curl -o antx.properties.${APP_NAME}.${ENV_TYPE} -sSL "${GET_ANTX_PROPERTIES_URL}"
-
+  do_it curl -o "antx.properties.${APP_NAME}.${ENV_TYPE}" --connect-timeout 5  -sSL "${GET_ANTX_PROPERTIES_URL}"
   if [ $? -ne 0 ]; then
     project_log_error_exit "获取配置项失败，请检查配置项api地址是否正确"
   fi
 
   # 将当前环境的配置项设置为环境变量
   if [[ -s antx.properties.${APP_NAME}.${ENV_TYPE} ]]; then
-    log_info "配置项内容\n：$(<antx.properties.${APP_NAME}.${ENV_TYPE})"
-    echo '#!/bin/bash' >$ENV_PROPERTIES_FILE
-    cat $HOME/antx.properties.$APP_NAME.$ENV_TYPE | while read line; do
-      origin_key=$(echo $line | awk -F"=" '{print $1}')
-      key=$(eval echo $origin_key)
-      origin_value=$(echo $line | awk -F"=" '{print $2}')
-      value=$(eval echo $origin_value)
+    log_info "配置项内容:\n$(<antx.properties.${APP_NAME}.${ENV_TYPE})"
+    echo '#!/bin/bash' >"$ENV_PROPERTIES_FILE"
+    while read -r line; do
+      origin_key=$(echo "$line" | awk -F"=" '{print $1}')
+      key=$(eval echo "$origin_key")
+      origin_value=$(echo "$line" | awk -F"=" '{print $2}')
+      value=$(eval echo "$origin_value")
 
       log_info "获取配置项:$key=$value"
-      echo "$key=$value" >>$ENV_PROPERTIES_FILE
-    done
+      echo "export $key=$value" >>"$ENV_PROPERTIES_FILE"
+    done <"$HOME/antx.properties.$APP_NAME.$ENV_TYPE"
+    ANTX_RESULT=$?
     return 0
   else
     log_info "应用配置项为空"
@@ -137,17 +152,19 @@ get_project_antx_properties() {
 kill_ws() {
 
   # 清理java服务
-  checkPIDfile
-  if [ $? -eq 0 ]; then
+  if checkPIDfile; then
     local mypid=$(<$PID_FILE)
     log_info "清除pid: $mypid"
     do_it kill -9 $mypid
-    do_it rm "$PID_FILE"
+    do_it rm "$PID_FILE" && log_info "清理java服务成功"
   else
-    log_info "killall -u ${USER} -9 java"
-    do_it killall -u ${USER} -9 java
+    if pgrep -u "${USER}" java; then
+      log_info "清理java服务"
+      do_it killall -u "${USER}" -9 java
+    else
+      log_info "当前用户无java进程在运行"
+    fi
   fi
-  log_info "清理java服务成功"
 
   # 清理docker
   log_info "清理docker服务"
@@ -161,8 +178,7 @@ kill_ws() {
 
   # 清理nginx
   log_info "开始清理nginx"
-  pidofproc nginx
-  if [ $? -eq 0 ]; then
+  if pidof nginx >/dev/null; then
     # 查看是否有该应用程序配置
     if [ -e "${NGINX_CONFIG_DIR}/${NGINX_CONF}" ]; then
       log_info "发现该应用nginx配置文件:${NGINX_CONF}"
@@ -223,11 +239,11 @@ check_deploy_status() {
     docker_status=$(sudo docker inspect -f '{{.State.Running}}' "${APP_NAME}-${ENV_TYPE}")
     [ "$docker_status" != "true" ] && project_log_error_exit "容器运行状态异常，部署失败"
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
-    sudo netstat -anop | grep -w "LISTEN" | grep -w ${PORT}
+    sudo ss -tnlp | grep -w "LISTEN" | grep -w ${PORT}
     if [ $? -eq 0 ]; then
       log_info "nginx监听正常"
     else
-      log_info "nginx监听失败"
+      log_error "nginx监听失败"
       do_it rm "${NGINX_CONFIG_DIR}/${NGINX_CONF}"
       project_log_error_exit "应用部署失败"
     fi
@@ -273,7 +289,7 @@ get_app_log() {
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
     log_info "获取nginx访问日志："
     tail -${LOG_LINE_NUM} "${HOME}/$NGINX_ACCESS_LOG"
-    if [ -s "${HOME}/$NGINX_ERROR_LOG" ];then
+    if [ -s "${HOME}/$NGINX_ERROR_LOG" ]; then
       log_info "nginx错误日志："
       tail -${LOG_LINE_NUM} "${HOME}/$NGINX_ERROR_LOG"
     fi
@@ -298,7 +314,7 @@ get_external_ip() {
   local external_ip
   # 设置连接超时时间10s
   external_ip=$(curl -s --connect-timeout 10 ipinfo.io | jq .ip | sed "s@\"@@g")
-  [ $? -eq 0 ] && echo "$external_ip" || return 1
+  [ -n "$external_ip" ] && echo "$external_ip" || return 1
 }
 
 # 部署war包
@@ -318,10 +334,10 @@ deploy_war() {
 
   log_info "Starting deploy $deploy_package"
   #PORT1/2/3是tomcat的其他端口,计算表达式不需要$
-  MINUS=$(( 8080 - PORT))
-  PORT1=$(( 8443 - MINUS))
-  PORT2=$(( 8009 - MINUS + 20))
-  PORT3=$(( 8005 - MINUS + 20))
+  MINUS=$((8080 - PORT))
+  PORT1=$((8443 - MINUS))
+  PORT2=$((8009 - MINUS + 20))
+  PORT3=$((8005 - MINUS + 20))
 
   # 修改tomcat配置文件
   log_info "修改tomcat配置：PORT:${PORT}"
@@ -360,26 +376,34 @@ deploy_tgz() {
   # 生成nginx配置文件，根据ENV_TYPE.APP_NAME.com作为域名 NGINX_HTML_DIR/APP_NAME作为root
   log_info "generate nginx config"
 
-  # 配置项拥有location和backend_url时启用nginx.location模板
-  if [ -n "$location" ] && [ -n "$backend_url" ]; then
-    log_info "启用nginx-location模板"
-    NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_LOCATION"
-  elif [ -n "$backend_url" ]; then
-    log_info "启用nginx-backend模板"
-    NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_BACKEND"
+  # 判断是否已经安装esh，如果安装esh引擎则用esh渲染否则使用常规模板渲染
+  if esh -V >/dev/null; then
+    log_info "使用esh模板引擎渲染配置文件"
+    NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_ESH"
+    do_it esh -o "${HOME}/$NGINX_CONF" "${NGINX_TEMPLATE_PATH}" 
   else
-    log_info "启动nginx默认模板"
-    NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE"
+     # 配置项拥有location和backend_url时启用nginx.location模板
+    log_info "使用默认引擎渲染模板"
+    if [ -n "$location" ] && [ -n "$backend_url" ]; then
+      log_info "启用nginx-location模板"
+      NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_LOCATION"
+    elif [ -n "$backend_url" ]; then
+      log_info "启用nginx-backend模板"
+      NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_BACKEND"
+    else
+      log_info "启动nginx默认模板"
+      NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_DEFAULT"
+    fi
+    # 定义"$"符号的变量，在模板替换时，如果不希望被识别为变量的，则可以使用${DOLLOR}进行替换
+    export DOLLAR="$"
+    # 原始替换模板方法
+    log_info "使用默认引擎渲染模板"
+    eval "cat <<EOF
+$(<"$NGINX_TEMPLATE_PATH")
+EOF" >"${HOME}/$NGINX_CONF"
   fi
-
-  # 定义"$"符号的变量，在模板替换时，如果不希望被识别为变量的，则可以使用${DOLLOR}进行替换
-  export DOLLAR="$"
-  eval "cat <<EOF
-$(<$NGINX_TEMPLATE_PATH)
-EOF" >${HOME}/$NGINX_CONF
-  # 查看配置并复制到nginx配置目录下
+  log_info "获取应用配置"
   cat < "${HOME}/$NGINX_CONF" | tee "${NGINX_CONFIG_DIR}/$NGINX_CONF"
-
   [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
 
   # 部署目录
@@ -389,11 +413,11 @@ EOF" >${HOME}/$NGINX_CONF
   # tar -xvf ${deploy_package} -C  ${deploy_dir} > /dev/null 2>&1
 
   log_info "解压部署包${deploy_package}到${HOME}"
-  tar -xvf ${deploy_package} -C ${HOME}
+  do_it tar -xvf "${deploy_package}" -C "${HOME}" && project_log_error_exit "部署包解压失败，部署失败"
 
   # 重启nginx server
   log_info "Restart nginx"
-  eval "sudo ${NGINX_SBIN_PATH} -s reload"
+  do_it "sudo ${NGINX_SBIN_PATH} -s reload"
 }
 
 # 部署docker容器
@@ -426,7 +450,7 @@ start_env() {
 
   # 加载配置作为全局变量
   if [ "$ANTX_RESULT" -eq 0 ]; then
-    log_info "加载变量文件:\n $(<$ENV_PROPERTIES_FILE)" && source $ENV_PROPERTIES_FILE
+    log_info "加载变量文件:\n $(<$ENV_PROPERTIES_FILE)" && source "$ENV_PROPERTIES_FILE"
   fi
 
   # 如果部署包为docker镜像(判断是否包含":"")，则使用root权限部署
@@ -437,10 +461,7 @@ start_env() {
   else
     # 下载部署包,-nv非详细输出
     log_info "下载部署包: $TAR_ADDRESS"
-    wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS
-
-    # 下载失败则退出
-    [ $? -eq 1 ] && project_log_error_exit "下载失败"
+    do_it wget -nv http://package.switch.aliyun.com:8088/$TAR_ADDRESS || project_log_error_exit "下载部署包失败"
 
     # 根据包名匹配对应的部署脚本
     if [[ ${deploy_package} =~ $war_Suffix ]]; then
@@ -465,7 +486,7 @@ start_env() {
 
 # 更新部署脚本
 update_env_script() {
-  cd ${HOME} || return
+  cd "${HOME}" || return
   log_info "starting update env_script"
   log_info "clearing env_script"
   do_it rm -rf env_script
