@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-05 00:16:26
+ # @LastEditTime: 2020-09-05 17:05:02
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -86,7 +86,7 @@ start_env
 # 创建pid文件
 createPIDfile
 
-log_info "等待${SLEEP_TIME}检查部署状态"
+log_info "等待${SLEEP_TIME}s检查部署状态"
 sleep 20
 
 # 检查部署是否成功
@@ -98,7 +98,7 @@ echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH
 # 获取应用日志
 get_app_log
 
-action "应用部署成功" /bin/true
+log_success "应用部署成功" 
 
 # 打印外部访问地址
 host_external_ip=$(get_external_ip) && log_info "外部访问地址:http://${host_external_ip}:${PORT}"

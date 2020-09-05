@@ -7,14 +7,14 @@ source /etc/profile
 do_it() {
   local execute_cmd tempfile
   execute_cmd="$*"
-  tempfile=`mktemp`
-  $execute_cmd > $tempfile 2>&1
+  tempfile=$(mktemp)
+  $execute_cmd >$tempfile 2>&1
   if [ $? -eq 0 ]; then
     # 命令执行成功，且日志级别未DEBUG时，打印执行成功日志
-    if [ "$LOG_LEVEL" = "CMD" ];then
+    if [ "$LOG_LEVEL" = "CMD" ]; then
       log_cmd "$execute_cmd"
       cat $tempfile
-    fi 
+    fi
     rm $tempfile
     return 0
   else
@@ -61,12 +61,13 @@ checkPIDfile() {
 createPIDfile() {
   if [ -n "$PID_FIND_STR" ]; then
     mypid=$(ps ux | grep "${PID_FIND_STR}" | grep -v grep | awk '{print $2}')
-    if [ $? -eq 0 -o -n "$mypid" ]; then
+    if [ $? -eq 0 ] && [ -n "$mypid" ]; then
       echo "$mypid" >$PID_FILE
       log_info "创建 pid_file: $PID_FILE, PID:$mypid"
       return 0
     else
-      project_log_error_exit "deploy failed for cannot find pid with ${PID_FIND_STR}"
+      get_app_log
+      project_log_error_exit "部署失败: 未发现该应用正在运行"
     fi
   fi
 
@@ -122,7 +123,7 @@ get_project_antx_properties() {
   do_it rm -rf "$HOME/antx.properties.$APP_NAME.$ENV_TYPE"
   # 配置项获取地址
   log_info "应用配置项地址: ${GET_ANTX_PROPERTIES_URL}"
-  do_it curl -o "antx.properties.${APP_NAME}.${ENV_TYPE}" --connect-timeout 5  -sSL "${GET_ANTX_PROPERTIES_URL}"
+  do_it curl -o "antx.properties.${APP_NAME}.${ENV_TYPE}" --connect-timeout 5 -sSL "${GET_ANTX_PROPERTIES_URL}"
   if [ $? -ne 0 ]; then
     project_log_error_exit "获取配置项失败，请检查配置项api地址是否正确"
   fi
@@ -255,30 +256,29 @@ check_deploy_status() {
 
 # 检查url是否可以访问
 check_url() {
+  local check_url resp_code
   if [ "$CHECK_URL"x == ""x ]; then
     log_info "无check_url，跳过url检测"
     return
   fi
-  log_info "starting check with url: ${CHECK_URL}"
-
-  local check_url=$CHECK_URL
-  log_info "Starting check $APP_NAME with url: $check_url"
+  check_url=$(eval echo $CHECK_URL)
+  log_info "开始检查check_url: $check_url"
   local count=0
-  local max_check_num=3
+  local max_check_num=${MAX_CHECK_NUM}
 
   while true; do
     ((count++))
     if [[ $count -gt ${max_check_num} ]]; then
-      local error_logs=$(get_app_log)
-      project_log_error_exit "$(cat error_logs) \nFailed to check app with url: $check_url.\n "
+      log_error "Check url failed"
+      get_app_log
+      project_log_error_exit "部署失败：$check_url检查失败"
     fi
     log_info "try $count times"
-    local resp_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 $check_url)
-    [[ "$resp_code" == "200" ]] && break
-    sleep 3
+    resp_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 "$check_url")
+    [ "$resp_code" = "200" ] && break
   done
+  log_success "$check_url访问正常"
 
-  log_info "$check_url return 200"
 }
 
 # 获取应用日志
@@ -362,10 +362,10 @@ deploy_war() {
 deploy_jar() {
   local deploy_package=$1
   log_info "Starting deploy $deploy_package"
-  PID_FIND_STR="java -jar $deploy_package"
+  PID_FIND_STR="java -jar -Dserver.port=${PORT} $deploy_package"
 
-  log_info "nohup java -jar  $deploy_package > ${APP_LOG} 2>&1 &"
-  nohup java -jar $deploy_package >${APP_LOG} 2>&1 &
+  log_info "nohup ${PID_FIND_STR} > ${APP_LOG} 2>&1 &"
+  nohup "${PID_FIND_STR}" >"${APP_LOG}" 2>&1 &
 }
 
 # 部署.tar.gz包
@@ -380,9 +380,9 @@ deploy_tgz() {
   if esh -V >/dev/null; then
     log_info "使用esh模板引擎渲染配置文件"
     NGINX_TEMPLATE_PATH="$NGINX_TEMPLATE_DIR/$NGINX_TEMPLATE_ESH"
-    do_it esh -o "${HOME}/$NGINX_CONF" "${NGINX_TEMPLATE_PATH}" 
+    do_it esh -o "${HOME}/$NGINX_CONF" "${NGINX_TEMPLATE_PATH}"
   else
-     # 配置项拥有location和backend_url时启用nginx.location模板
+    # 配置项拥有location和backend_url时启用nginx.location模板
     log_info "使用默认引擎渲染模板"
     if [ -n "$location" ] && [ -n "$backend_url" ]; then
       log_info "启用nginx-location模板"
@@ -403,7 +403,7 @@ $(<"$NGINX_TEMPLATE_PATH")
 EOF" >"${HOME}/$NGINX_CONF"
   fi
   log_info "获取应用配置"
-  cat < "${HOME}/$NGINX_CONF" | tee "${NGINX_CONFIG_DIR}/$NGINX_CONF"
+  cat <"${HOME}/$NGINX_CONF" | tee "${NGINX_CONFIG_DIR}/$NGINX_CONF"
   [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
 
   # 部署目录
@@ -449,7 +449,7 @@ start_env() {
   deploy_package=${TAR_ADDRESS##*/}
 
   # 加载配置作为全局变量
-  if [ "$ANTX_RESULT" -eq 0 ]; then
+  if [ "$ANTX_RESULT" = "0" ]; then
     log_info "加载变量文件:\n $(<$ENV_PROPERTIES_FILE)" && source "$ENV_PROPERTIES_FILE"
   fi
 
