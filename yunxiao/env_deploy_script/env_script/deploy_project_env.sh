@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-09-05 17:05:02
+ # @LastEditTime: 2020-09-06 12:35:05
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -90,7 +90,7 @@ log_info "等待${SLEEP_TIME}s检查部署状态"
 sleep 20
 
 # 检查部署是否成功
-check_deploy_status
+check_deploy_status "$CHECK_URL"
 
 # 部署成功，记录本次部署命令
 echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH

@@ -52,6 +52,7 @@
     LOG_DIR=logs
     # 显示log的行数
     LOG_LINE_NUM=100 
+    LOG_LEVEL=CMD # 日志级别，默认为CMD，可选DEBUG,CMD,INFO
 
     # java相关变量
     JAVA8_HOME=/usr/install/java8
