@@ -1,12 +1,12 @@
 ## env部署脚本说明
 
 ### 脚本功能说明
-1. 多系统部署支持，支持ubuntu和redhat发行版系统
+1. 支持多系统部署，支持ubuntu和redhat发行版系统
 2. 支持服务器一键初始化，无需手动配置
 3. 支持docker、jar、war、tar.gz格式的包一键自动化部署
 4. 支持公共环境部署失败后，自动回退上一个成功部署的版本
 5. 支持nginx配置文件自动生成，免人工配置
-6. 支持部署后url检测，放置部署假成功
+6. 支持部署后url检测，排除部署假成功
 7. 部署成功后，自动打印出访问该应用的内网和外网地址
 
 
@@ -27,8 +27,8 @@
       - 检查`check_url`访问是否正常
    5. 打印部署日志和访问地址  
 3. nginx部署流程
-   1. 检查环境选择渲染引擎
-   2. 根据模板和配置项自动生成nginx配置文件
+   1. 检查环境选择对应模板渲染引擎
+   2. 根据模板和应用配置项自动生成nginx配置文件
       1. 根据配置项`location`、`backend_url`、`ws_location`、`ws_backend_url`来渲染模板
    3. 复制nginx配置文件到`$NGINX_CONFIG_DIR`目录，重启nginx服务
    4. 运行nginx的用户需要拥有读取其他用户家目录的权利，最好以root账户运行Nginx
@@ -48,7 +48,9 @@
     # 配置项获取地址，单租户时，不需要group参数
     GET_ANTX_PROPERTIES_URL="${GET_ANTX_PROPERTIES_API}?appName=${APP_NAME}&antxType=${ENV_TYPE}&crid=${CRID}&group=52"
 
-    #显示log的行数
+    # log目录
+    LOG_DIR=logs
+    # 显示log的行数
     LOG_LINE_NUM=100 
 
     # java相关变量
@@ -64,6 +66,14 @@
     TOMCAT_DOWNLOAD_URL="http://package.switch.aliyun.com:8088/upload/tools/${TOMCAT_VERSION}.zip"
 
    ```
+   **参数说明**
+   -  `GET_ANTX_PROPERTIES_API`: 获取应用的配置项的api地址，更换为实际的部署地址
+   -  `GET_ANTX_PROPERTIES_URL`: 获取应用配置项的具体请求url，根据是否为多租户来决定添加group参数
+   -  `JAVA8_HOME`: java8的home路径，如果已经设置了全局的JAVA_HOME，则可以忽略
+   -  `NGINX_HOME`: nginx的home路径，如果已经使用yum安装，则可以忽略
+   -  `TOMCAT_PATH`:  tomcat的包路径，包的版本为`TOMCAT_VERSION`
+   -  `LOG_DIR`:  保存云效log日志文件的目录，需要与`star.agent.deploy.log.path`全局配置项的值一致
+
 2. 使用root账号执行脚本添加用户
    ```shell
    sh env_server_init.sh all | <username ...>
@@ -75,7 +85,7 @@
 
 ### 前置条件
   - 配置文件
-     1. 配置正确的配置项获取地址 
+     1. 应用配置项获取地址配置正确 
      2. 已安装nginx，在配置文件中配置正确
      3. 已设置java环境，在配置文件中配置正确
      4. 已下载tomcat包，在配置文件中配置正确
@@ -101,3 +111,4 @@
        1. 第一个参数需要为`${appName}`
        2. 第三个参数为`${typeAlias}`
    
+

@@ -67,7 +67,7 @@ createPIDfile() {
       return 0
     else
       get_app_log
-      project_log_error_exit "部署失败: 未发现该应用正在运行"
+      project_log_error_exit "未发现该应用正在运行"
     fi
   fi
 
@@ -103,13 +103,13 @@ project_log_error_exit() {
   local error_message=$1
 
   if [ "$NEED_RESTORE" == "yes" ]; then
-    log_info "部署失败"
+    log_error "部署失败：$error_message"
     local restore_cmd=$(cat $RESTORE_FILE_PATH)
-    [ -n $restore_cmd ] && log_info "开始执行上一次成功部署命令" && exec $restore_cmd
+    [ -n "$restore_cmd" ] && log_info "开始恢复上一次部署状态" && exec $restore_cmd
   fi
 
   [ -f "$HOME/deploy_project_env_${DEPLOY_ID}.log" ] && tail -n 100 $HOME/deploy_project_env_${DEPLOY_ID}.log
-  log_error " $error_message"
+  log_error "部署失败：$error_message"
   rm -rf $PID_FILE
   exit 1
 }
@@ -238,15 +238,14 @@ check_deploy_status() {
     # 获取docker部署状态
     local docker_status
     docker_status=$(sudo docker inspect -f '{{.State.Running}}' "${APP_NAME}-${ENV_TYPE}")
-    [ "$docker_status" != "true" ] && project_log_error_exit "容器运行状态异常，部署失败"
+    [ "$docker_status" != "true" ] && project_log_error_exit "容器运行状态异常"
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
     sudo ss -tnlp | grep -w "LISTEN" | grep -w ${PORT}
     if [ $? -eq 0 ]; then
       log_info "nginx监听正常"
     else
-      log_error "nginx监听失败"
       do_it rm "${NGINX_CONFIG_DIR}/${NGINX_CONF}"
-      project_log_error_exit "应用部署失败"
+      project_log_error_exit "nginx监听失败"
     fi
   else
     ! checkPIDfile && project_log_error_exit "deploy failed for pidFile is empty"
@@ -271,7 +270,7 @@ check_url() {
     if [[ $count -gt ${max_check_num} ]]; then
       log_error "Check url failed"
       get_app_log
-      project_log_error_exit "部署失败：$check_url检查失败"
+      project_log_error_exit "$check_url检查失败"
     fi
     log_info "try $count times"
     resp_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -m 5 "$check_url")
@@ -320,17 +319,21 @@ get_external_ip() {
 # 部署war包
 deploy_war() {
 
+  TOMCAT_HOME="/home/${USER}/${TOMCAT_VERSION}"
+  TOMCAT_LOG="${TOMCAT_HOME}/logs/catalina.out"
+  TOMCAT_PACKAGE="${TOMCAT_PATH}/${TOMCAT_VERSION}.tar.gz"
+
   local deploy_package=$1
-  log_info "开始获取${TOMCAT_VERSION}.zip"
-  wget -P ${HOEM} -nv ${TOMCAT_DOWNLOAD_URL}
+  log_info "获取${TOMCAT_VERSION}.tar.gz"
+  do_it wget -P "${HOEM}" -nv "${TOMCAT_DOWNLOAD_URL}"
 
   if [ ! $? -eq 0 ]; then
-    log_warning "下载失败，开始拷贝${TOMCAT_PATH}/${TOMCAT_VERSION}"
-    cp "${TOMCAT_PATH}/${TOMCAT_VERSION}.zip" ${HOME}
-    [ ! $? -eq 0 ] && project_log_error_exit "获取${TOMCAT_VERSION}失败"
+    [ -f "$TOMCAT_PACKAGE" ] || project_log_error_exit "获取${TOMCAT_VERSION}.tar.gz失败"
+    log_warning "下载失败，拷贝${TOMCAT_PATH}/${TOMCAT_VERSION}"
+    do_it cp -rf "$TOMCAT_PACKAGE" "${HOME}" || project_log_error_exit "获取${TOMCAT_VERSION}.tar.gz失败"
   fi
   log_info "获取${TOMCAT_VERSION}成功"
-  unzip "${HOME}/${TOMCAT_VERSION}.zip"
+  do_it tar -xvf "TOMCAT_PACKAGE" || project_log_error_exit "解压$TOMCAT_HOME.tar.gz失败"
 
   log_info "Starting deploy $deploy_package"
   #PORT1/2/3是tomcat的其他端口,计算表达式不需要$
@@ -342,10 +345,10 @@ deploy_war() {
   # 修改tomcat配置文件
   log_info "修改tomcat配置：PORT:${PORT}"
   cd "$TOMCAT_HOME/conf" || return
-  sed -i "s/8080/$PORT/g" server.xml
-  sed -i "s/8443/$PORT1/g" server.xml
-  sed -i "s/8009/$PORT2/g" server.xml
-  sed -i "s/8005/$PORT3/g" server.xml
+  do_it sed -i "s/8080/$PORT/g" server.xml
+  do_it sed -i "s/8443/$PORT1/g" server.xml
+  do_it sed -i "s/8009/$PORT2/g" server.xml
+  do_it sed -i "s/8005/$PORT3/g" server.xml
 
   # 设置查找该pid的命令
   PID_FIND_STR="${TOMCAT_VERSION}"
@@ -353,9 +356,8 @@ deploy_war() {
   cd "$TOMCAT_HOME/bin" || return
 
   chmod 755 "*.sh"
-  sh startup.sh
+  do_it ./startup.sh || project_log_error_exit "Tomcat启动失败"
   sleep 3
-  return
 }
 
 # 部署jar包
@@ -413,7 +415,7 @@ EOF" >"${HOME}/$NGINX_CONF"
   # tar -xvf ${deploy_package} -C  ${deploy_dir} > /dev/null 2>&1
 
   log_info "解压部署包${deploy_package}到${HOME}"
-  do_it tar -xvf "${deploy_package}" -C "${HOME}" && project_log_error_exit "部署包解压失败，部署失败"
+  do_it tar -xvf "${deploy_package}" -C "${HOME}" && project_log_error_exit "部署包解压失败"
 
   # 重启nginx server
   log_info "Restart nginx"
