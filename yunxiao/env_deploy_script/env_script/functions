@@ -324,7 +324,7 @@ deploy_war() {
   TOMCAT_HOME="/home/${USER}/$TOMCAT_VERSION"
   TOMCAT_LOG="${TOMCAT_HOME}/logs/catalina.out"
   TOMCAT_PACKAGE="${TOMCAT_PATH}/${TOMCAT_FILE}"
-  TOMCAT_HOME_FILE="${HOME}${TOMCAT_FILE}"
+  TOMCAT_HOME_FILE="${HOME}/${TOMCAT_FILE}"
 
   local deploy_package=$1
   log_info "Downloading ${TOMCAT_FILE}"
@@ -338,14 +338,14 @@ deploy_war() {
   log_info "获取${TOMCAT_FILE}成功"
 
   if [[ "$TOMCAT_FILE" =~ zip ]];then
-    do_it unzip -o ${TOMCAT_HOME_FILE} || project_log_error_exit "解压${TOMCAT_HOME_FILE}失败"
+    do_it unzip -o "${TOMCAT_HOME_FILE}" || project_log_error_exit "解压${TOMCAT_HOME_FILE}失败"
   elif [[ "$TOMCAT_FILE" =~ tar.gz ]];then
-    do_it tar -xf "${TOMCAT_HOME_FILE}" || project_log_error_exit "解压${TOMCAT_HOME_FILE}失败"
+    do_it tar -xf "${TOMCAT_HOME_FILE}" -C "${HOME}" || project_log_error_exit "解压${TOMCAT_HOME_FILE}失败"
   else
     project_log_error_exit "toamcat包${TOMCAT_HOME_FILE}格式不符合要求(zip|tar.gz)"
   fi
 
-  do_it cp "$deploy_package" "${TOMCAT_HOME}/webapps"
+  do_it cp "${HOME}/$deploy_package" "${TOMCAT_HOME}/webapps"
 
   log_info "Starting deploy $deploy_package"
   #PORT1/2/3是tomcat的其他端口,计算表达式不需要$
