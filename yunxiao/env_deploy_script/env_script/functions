@@ -49,12 +49,14 @@ checkPIDfile() {
 
   procpid=$(<"$PID_FILE")
 
-  if [ -e "/proc/$procpid" ]; then
+  if [ -d "/proc/$procpid" ]; then
     # 查看进程的执行命令，判断是否包含deploy.sh
     log_info "应用程序正在运行: $(</proc/$procpid/cmdline)"
     return 0
+  else
+    log_warning "应用程序未在运行"
+    return 1
   fi
-  return 1
 }
 
 # 创建PIDFILE
@@ -107,10 +109,8 @@ project_log_error_exit() {
     local restore_cmd=$(cat $RESTORE_FILE_PATH)
     [ -n "$restore_cmd" ] && log_info "开始恢复上一次部署状态" && exec $restore_cmd
   fi
-
-  [ -f "$HOME/deploy_project_env_${DEPLOY_ID}.log" ] && tail -n 100 $HOME/deploy_project_env_${DEPLOY_ID}.log
+  get_app_log
   log_error "部署失败：$error_message"
-  rm -rf $PID_FILE
   exit 1
 }
 
@@ -159,7 +159,8 @@ kill_ws() {
     do_it kill -9 $mypid
     do_it rm "$PID_FILE" && log_info "清理java服务成功"
   else
-    if pgrep -u "${USER}" java; then
+    # 用户名为数字时,pgrep不生效，因此用uid查询
+    if pgrep -u "$(id -u ${USER})" java; then
       log_info "清理java服务"
       do_it killall -u "${USER}" -9 java
     else
@@ -232,6 +233,25 @@ clean_env() {
   clean_work_dir
 }
 
+# 检查当前java版本
+check_java() {
+  local java_version java_version_expected
+  java_version_expected=$1
+  java_version=$(java -version 2>&1 | grep -Eo "1\.[0-9]+\.\w+")
+  if [[ "$java_version" =~ (1\.([0-9])\.(.*)) ]]; then
+    # 得出java版本的次版本号，例如7/8
+    java_version_minor=${BASH_REMATCH[2]}
+
+    # 比较java的版本
+    if [ "$java_version_minor" -lt "$java_version_expected" ]; then
+      return 1
+    fi
+  else
+    log_error "java环境未设置"
+    return 1
+  fi
+}
+
 # 检查部署状态
 check_deploy_status() {
   local CHECK_URL=$1
@@ -241,7 +261,7 @@ check_deploy_status() {
     docker_status=$(sudo docker inspect -f '{{.State.Running}}' "${APP_NAME}-${ENV_TYPE}")
     [ "$docker_status" != "true" ] && project_log_error_exit "容器运行状态异常"
   elif [ "$DEPLOY_TYPE" == "nginx" ]; then
-    sudo ss -tnlp | grep -w "LISTEN" | grep -w "${PORT}"
+    ss -tnlp | grep -w "LISTEN" | grep -w "${PORT}"
     if [ $? -eq 0 ]; then
       log_info "nginx监听正常"
     else
@@ -249,7 +269,7 @@ check_deploy_status() {
       project_log_error_exit "nginx监听失败"
     fi
   else
-    ! checkPIDfile && project_log_error_exit "deploy failed for pidFile is empty"
+    ! checkPIDfile && project_log_error_exit "deploy failed for application is not running."
   fi
   check_url "${CHECK_URL}"
 }
@@ -259,8 +279,13 @@ check_url() {
   local check_url resp_code
   check_url=$(eval echo "$1")
   if [ -z "$check_url" ]; then
-    check_url="http://127.0.0.1:${PORT}"
-    log_info "没有设置check_url，使用默认check_url:${check_url} "
+    if [ "$DEPLOY_TYPE" = "nginx" ]; then
+      check_url="http://127.0.0.1:${PORT}"
+      log_info "没有设置check_url，使用默认check_url:${check_url} "
+    else
+      log_warning "应用没有设置check_url，跳过URL检查"
+      return 0
+    fi
   fi
 
   log_info "开始检查check_url: $check_url"
@@ -271,7 +296,7 @@ check_url() {
     ((count++))
     if [[ $count -gt ${max_check_num} ]]; then
       log_error "Check url failed"
-      get_app_log
+      curl -connect-timeout 5 -m 5 "$check_url"
       project_log_error_exit "$check_url检查失败"
     fi
     log_info "try $count times"
@@ -337,9 +362,9 @@ deploy_war() {
   fi
   log_info "获取${TOMCAT_FILE}成功"
 
-  if [[ "$TOMCAT_FILE" =~ zip ]];then
+  if [[ "$TOMCAT_FILE" =~ zip ]]; then
     do_it unzip -o "${TOMCAT_HOME_FILE}" || project_log_error_exit "解压${TOMCAT_HOME_FILE}失败"
-  elif [[ "$TOMCAT_FILE" =~ tar.gz ]];then
+  elif [[ "$TOMCAT_FILE" =~ tar.gz ]]; then
     do_it tar -xf "${TOMCAT_HOME_FILE}" -C "${HOME}" || project_log_error_exit "解压${TOMCAT_HOME_FILE}失败"
   else
     project_log_error_exit "toamcat包${TOMCAT_HOME_FILE}格式不符合要求(zip|tar.gz)"
@@ -378,7 +403,7 @@ deploy_jar() {
   PID_FIND_STR="java -jar -Dserver.port=${PORT} $deploy_package"
 
   log_info "nohup ${PID_FIND_STR} > ${APP_LOG} 2>&1 &"
-  nohup "${PID_FIND_STR}" >"${APP_LOG}" 2>&1 &
+  eval nohup "${PID_FIND_STR}" >"${APP_LOG}" 2>&1 &
 }
 
 # 部署.tar.gz包
@@ -420,13 +445,13 @@ EOF" >"${HOME}/$NGINX_CONF"
   [ ! $? -eq 0 ] && project_log_error_exit "配置文件生成失败，请查看是否拥有${NGINX_CONFIG_DIR}写入权限"
 
   # 部署目录
-  # deploy_dir=${NGINX_HOME}/html/${APP_NAME}/
-  # log_info "清理部署目录: ${deploy_dir}"
-  # [ -d ${deploy_dir} ] && rm -rf ${deploy_dir}
+  deploy_dir=${HOME}/${APP_NAME}
+  log_info "清理部署目录: ${deploy_dir}"
+  [ -d ${deploy_dir} ] && do_it rm -rf ${deploy_dir}
   # tar -xvf ${deploy_package} -C  ${deploy_dir} > /dev/null 2>&1
 
   log_info "解压部署包${deploy_package}到${HOME}"
-  do_it tar -xf "${deploy_package}" -C "${HOME}" && project_log_error_exit "部署包解压失败"
+  do_it tar -xf "${deploy_package}" -C "${HOME}" || project_log_error_exit "部署包解压失败"
 
   # 重启nginx server
   log_info "Restart nginx"
