@@ -35,3 +35,5 @@
 - name: 上传客户端包到doom-server
   shell: docker cp  {{ tmp_dir }}/{{client_pkg}} {{doom_name}}:/home/admin/doom/client_library/
 
+- name: doom-server管理员账号
+  debug: msg={{ doom_admin_account }}

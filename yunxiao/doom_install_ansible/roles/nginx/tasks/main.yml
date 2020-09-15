@@ -1,0 +1,24 @@
+- name: 渲染nginx配置文件
+  template: src=nginx.conf.j2 dest=/opt/nginx.conf
+
+- name: 创建临时文件夹
+  file: name={{tmp_dir}} state=directory
+
+- name: 配置域名解析规则
+  shell: echo "{{ groups['nginx'][0] }} {{ doom_url }}" >> /etc/hosts
+
+- name: 分发nginx容器镜像
+  copy: src={{ item }} dest={{ tmp_dir }}
+  with_fileglob:
+    - "{{ software_dir }}/{{ nginx_pkg }}"
+
+- name: 载入nginx镜像
+  shell: docker load < {{ tmp_dir }}/{{ nginx_pkg }} 
+
+- name: 删除老的nginx服务
+  shell: docker rm -f {{ nginx_name }}
+  ignore_errors: True 
+
+- name: 启动Nginx
+  shell: docker run -d --net host -p {{ nginx_port }}:80 -v /opt/nginx.conf:/etc/nginx/nginx.conf --name {{ nginx_name }} {{ nginx_image }}  
+

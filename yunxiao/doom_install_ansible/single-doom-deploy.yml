@@ -40,3 +40,10 @@
   roles:
     - doom
   tags: doom
+
+- name: 5.部署nginx
+  gather_facts: false
+  hosts: nginx
+  roles:
+    - nginx
+  tags: nginx

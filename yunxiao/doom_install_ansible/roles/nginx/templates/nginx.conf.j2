@@ -1,0 +1,115 @@
+## 应用于集群A
+# proxy conf
+user                        root;
+
+#worker_processes            auto;
+#worker_cpu_affinity         auto;
+
+#worker_rlimit_nofile        100000;
+
+#error_log                   "pipe:/opt/taobao/install/cronolog/sbin/cronolog @dir.nginx.run.log@/cronolog/%Y/%m/%Y-%m-%d-error.log" warn;
+#pid                         @dir.core.run@/nginx.pid;
+
+events {
+    use                     epoll;
+    worker_connections      1024;
+}
+
+
+http {
+    include                 mime.types;
+    default_type            application/octet-stream;
+    proxy_store             off;    
+    underscores_in_headers  on; #Enables the use of underscores in client request header fields
+
+    sendfile                on;
+    tcp_nopush              on;
+
+    #server_tokens           off;
+
+    keepalive_timeout       0;
+
+    proxy_ignore_client_abort on;
+
+    client_header_timeout   1m;
+    send_timeout            1m;
+    client_max_body_size    100m;
+    client_body_buffer_size 64k;
+    index                   index.htm;
+    
+    log_format  main  '$http_orig_client_ip - $remote_addr:$remote_port - $remote_user [$time_local] '
+                      '"$request_method http://$host$request_uri" $status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for" "$upstream_addr" $request_time '
+                      '$upstream_response_time zone="$cookie_zone" "$cookie_ali_apache_tracktmp"'; 
+
+    #access_log              "pipe:/opt/taobao/install/cronolog/sbin/cronolog @dir.nginx.run.log@/cronolog/%Y/%m/%Y-%m-%d-access.log" main;
+    log_not_found           off;
+
+    gzip                    on;
+    gzip_http_version       1.0;
+    gzip_comp_level         6;
+    gzip_min_length         1024;
+    gzip_proxied            any;
+    gzip_vary               on;
+    gzip_disable            msie6;
+    gzip_buffers            96 8k;
+    gzip_types              text/xml text/plain text/css application/javascript application/x-javascript application/rss+xml application/json;
+    #proxy_temp_path          @dir.core.run@/temp/proxy_temp 1 2;
+    #client_body_temp_path    @dir.core.run@/temp/client_body_temp 1 2;
+    proxy_set_header         X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_redirect           off;
+    proxy_buffers            128 8k;
+    proxy_intercept_errors   on;
+
+    # fight DDoS attack, tune the numbers below according your application!!!
+    #limit_req_zone          $binary_remote_addr  zone=req:20m   rate=200r/s;
+    #limit_req               zone=req  burst=100;
+    #limit_zone              conn $binary_remote_addr  20m;
+    #limit_conn              conn 200;
+
+
+    # waf, fight hashdos attack
+    #waf                              on;
+    #waf_max_post_params              1000;
+    #waf_max_args                     1000;
+    #waf_max_cookies                  1000;
+    #waf_post_delimiter_maxlen        70;
+
+    server {
+        listen              80 default_server;
+        server_name         doom-proxy;
+
+  
+
+        location = /ws/pushClient.ws {
+           proxy_read_timeout    3600s;
+           proxy_pass   {{ doom_url }}:{{ doom_port }};
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+
+        }
+
+        location = /monitor/ajax/mon_server.do {
+           proxy_pass   {{ doom_url }}:{{ doom_port }};
+        }
+
+        location = /common/plugin/plugin_download.do {
+           proxy_pass   {{ doom_url }}:{{ doom_port }};
+        }
+
+        location = /proxy/saveCaseGateWay.do {
+           proxy_pass   {{ doom_url }}:{{ doom_port }};
+        }
+
+        location = /app/ajax/state_data_collector.do {
+           proxy_pass   {{ doom_url }}:{{ doom_port }};
+        }
+
+        location = /app/ajax/judge_key_duplicate.do {
+           proxy_pass   {{ doom_url }}:{{ doom_port }};
+        }
+    }
+  
+    include /etc/nginx/conf.d/*.conf;
+}

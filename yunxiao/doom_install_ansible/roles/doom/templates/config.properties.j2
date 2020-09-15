@@ -15,16 +15,10 @@ pri.db.password  = {{ mysql_password }}
 doom.solr.url      = http://{{  hostvars[host].inventory_hostname  }}:8983/solr/success_case
 {% endfor %}
 
-redis.dbIndex       = {{ redis_dbIndex }}
-redis.expiration    = 3000
 
 {% for host in groups['redis'] %}
 redis.host          = {{  hostvars[host].inventory_hostname }}
 {% endfor %}
 
-redis.maxActive     = 600
-redis.maxIdle       = 300
-redis.maxWait       = 1000
 redis.port          = {{ redis_port }}
-redis.testOnBorrow  = true
 redis.password      = {{ redis_passowrd }}

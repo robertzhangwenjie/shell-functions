@@ -8,9 +8,10 @@ doom_cfg_dir: '/home/admin/doomconfig'
 license: 'B+qXthItT6HBwuT24oD4qmOW+8OAUN2qa7+tRGwlEBln3k5jGRBBN0RZ1ddMU5R0la0ZOq25cQZtdBO1Ljolhw==|PbnLZz0Pub3IAb5vCSf4wg5jc3QRnZ1M9yfOmDGLHloDB8exxPki+zNQS689RIFSJvZV42uCIV+CuJ10EojaoQ=='
 doom_url: 'http://doompoc.rdc.aliyun.com'
 doom_port: 80
-doom_image: 'registry.cn-hangzhou.aliyuncs.com/doom/clouddoom:1.0.16'
+doom_image: 'registry.cn-hangzhou.aliyuncs.com/doom/clouddoom:1.2.5'
 doom_name: 'doom-server'
-doom_pkg: 'doom-server-1.0.16.tar.gz'
+doom_pkg: 'doom-server-1.2.5.tar.gz'
+doom_admin_account: 'admin/doomaliadmin'
 
 # mysql配置
 mysql_username: 'root'
@@ -31,4 +32,10 @@ solr_name: 'doom-solr'
 solr_image: 'solr:7.5.0'
 
 # 客户端包
-client_pkg: 'cloud.lib_7.0.0.31.zip'
+client_pkg: 'cloud.lib_7.2.0.35.zip'
+
+# nginx配置
+nginx_pkg: 'nginx-1.19.2.tar.gz'
+nginx_image: 'nginx:1.19.2'
+nginx_name: 'doom-nginx'
+nginx_port: 80
