@@ -31,6 +31,7 @@ redis_port: 6379
 # solr配置
 solr_name: 'doom-solr'
 solr_image: 'solr:7.5.0'
+solr_port: 8983
 
 # 客户端包
 client_pkg: 'cloud.lib_7.2.0.35.zip'

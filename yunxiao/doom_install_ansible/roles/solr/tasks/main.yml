@@ -21,7 +21,7 @@
   when: solrName.stdout == solr_name
 
 - name: 启动solr
-  shell: docker run -itd --name {{solr_name}} -p 8983:8983 {{solr_image}}
+  shell: docker run -itd --name {{solr_name}} -p {{ solr_port }}:8983 {{solr_image}}
   
 
 - name: 创建core
