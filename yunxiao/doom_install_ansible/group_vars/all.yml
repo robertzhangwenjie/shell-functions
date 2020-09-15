@@ -19,7 +19,7 @@ mysql_username: 'root'
 mysql_password: 123456
 mysql_name: 'doom-mysql'
 mysql_image: 'mysql:5.7'
-doom_init_sql: 'create database doom DEFAULT CHARACTER SET utf8 collate utf8_general_ci;'
+doom_init_sql: 'create database doom DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 
 # redis连接配置
 redis_dbIndex: 0
