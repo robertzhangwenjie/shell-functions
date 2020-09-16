@@ -33,10 +33,10 @@
     shell: sleep 10 && docker exec -it {{solr_name}} /opt/solr/bin/solr create -c success_case
 
 - name: 复制managed-schema.xml文件
-  copy: src=managed-schema.xml dest={{tmp_dir}}/managed-schema.xml
+  copy: src=managed-schema dest={{tmp_dir}}/managed-schema
 
 - name: 设置success_case schema.xml
-  shell: docker cp {{tmp_dir}}/managed-schema.xml {{solr_name}}:/opt/solr/server/solr/success_case/conf/managed-schema
+  shell: docker cp {{tmp_dir}}/managed-schema {{solr_name}}:/opt/solr/server/solr/success_case/conf/managed-schema
  
 
 - name: 设置schema.xml权限
