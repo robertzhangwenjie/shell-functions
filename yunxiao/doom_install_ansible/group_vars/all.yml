@@ -5,7 +5,7 @@ tmp_dir: '/opt/doom'
 
 # doom-server配置
 doom_cfg_dir: '/home/admin/doomconfig'
-license: 'B+qXthItT6HBwuT24oD4qmOW+8OAUN2qa7+tRGwlEBln3k5jGRBBN0RZ1ddMU5R0la0ZOq25cQZtdBO1Ljolhw==|PbnLZz0Pub3IAb5vCSf4wg5jc3QRnZ1M9yfOmDGLHloDB8exxPki+zNQS689RIFSJvZV42uCIV+CuJ10EojaoQ=='
+license: 'QyCLVreuSdv9DBPMf9YltF215HQ94OfgHkD2znWAEKQ5FDq6XELBX3he7TVj5N0Z6xJPAQE1AtKjPhQsXoKGIQ==|JBI3ULIkdBOREQhjbah78Rrhf5AWoC5liIHijlONU/poRxM6xj+UfCp5u8ga0VEMwDiZvThWmKvV3jLmEU+oSw=='
 doom_url: 'http://doompoc.rdc.aliyun.com'
 doom_host: 'doompoc.rdc.aliyun.com'
 doom_port: 80

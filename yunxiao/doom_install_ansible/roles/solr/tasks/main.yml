@@ -36,8 +36,8 @@
   copy: src=managed-schema.xml dest={{tmp_dir}}/managed-schema.xml
 
 - name: 设置success_case schema.xml
-  shell: docker cp {{tmp_dir}}/managed-schema.xml {{solr_name}}:/opt/solr/server/solr/success_case/conf/managed-schema.xml
+  shell: docker cp {{tmp_dir}}/managed-schema.xml {{solr_name}}:/opt/solr/server/solr/success_case/conf/managed-schema
  
 
 - name: 设置schema.xml权限
-  shell: docker exec -u root {{solr_name}} chmod 755 /opt/solr/server/solr/success_case/conf/managed-schema.xml
+  shell: docker exec -u root {{solr_name}} chmod 755 /opt/solr/server/solr/success_case/conf/managed-schema
