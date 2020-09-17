@@ -4,9 +4,6 @@
 - name: 创建临时文件夹
   file: name={{tmp_dir}} state=directory
 
-- name: 配置域名解析规则
-  lineinfile: dest=/etc/hosts line="{{ groups['doom'][0] }} {{ doom_host }}"
-
 - name: 分发nginx容器镜像
   copy: src={{ item }} dest={{ tmp_dir }}
   with_fileglob:

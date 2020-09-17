@@ -75,15 +75,19 @@ http {
     #waf_max_cookies                  1000;
     #waf_post_delimiter_maxlen        70;
 
+    upstream doom-server {
+        server {{ groups['doom'][0] }}:{{ doom_port }};
+    }
+
     server {
-        listen              80 default_server;
-        server_name         doom-proxy;
+        listen              80;
+        server_name         {{ doom_host }};
 
   
 
         location = /ws/pushClient.ws {
            proxy_read_timeout    3600s;
-           proxy_pass   {{ doom_url }}:{{ doom_port }};
+           proxy_pass   http://doom-server;
            proxy_http_version 1.1;
            proxy_set_header Upgrade $http_upgrade;
            proxy_set_header Connection "upgrade";
@@ -91,23 +95,23 @@ http {
         }
 
         location = /monitor/ajax/mon_server.do {
-           proxy_pass   {{ doom_url }}:{{ doom_port }};
+           proxy_pass   http://doom-server;
         }
 
         location = /common/plugin/plugin_download.do {
-           proxy_pass   {{ doom_url }}:{{ doom_port }};
+           proxy_pass   http://doom-server;
         }
 
         location = /proxy/saveCaseGateWay.do {
-           proxy_pass   {{ doom_url }}:{{ doom_port }};
+           proxy_pass   http://doom-server;
         }
 
         location = /app/ajax/state_data_collector.do {
-           proxy_pass   {{ doom_url }}:{{ doom_port }};
+           proxy_pass   http://doom-server;
         }
 
         location = /app/ajax/judge_key_duplicate.do {
-           proxy_pass   {{ doom_url }}:{{ doom_port }};
+           proxy_pass   http://doom-server;
         }
     }
   
