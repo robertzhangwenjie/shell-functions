@@ -34,7 +34,7 @@ solr_image: 'solr:7.5.0'
 solr_port: 8983
 
 # 客户端包
-client_pkg: 'cloud.lib_7.2.0.35.zip'
+client_pkg: 'cloud.lib_7.2.0.39.zip'
 
 # nginx配置
 nginx_pkg: 'nginx-1.19.2.tar.gz'

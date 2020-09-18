@@ -23,7 +23,7 @@
 - name: 启动doom-mysql
   block:
     - name: 启动doom-mysql
-      shell: docker run -itd --name {{ mysql_name }}  -p 3306:3306 -e MYSQL_ROOT_PASSWORD={{ mysql_password }} {{ mysql_image }} --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      shell: docker run -itd --name {{ mysql_name }} -v /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime -p 3306:3306 -e MYSQL_ROOT_PASSWORD={{ mysql_password }} {{ mysql_image }} --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
   rescue:
     - name: 失败重启doom-mysql
       shell: docker restart {{ mysql_name }}
