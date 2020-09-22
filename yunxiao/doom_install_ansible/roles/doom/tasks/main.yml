@@ -21,7 +21,7 @@
   template: src=config.properties.j2 dest={{ doom_cfg_dir }}/config.properties
 
 - name: 启动doom server
-  shell: docker run -d --name {{ doom_name }} -v {{ doom_cfg_dir }}:{{ doom_cfg_dir }} -p {{doom_port}}:80 -p 8000:8000 -p 7001:7001 {{ doom_image }}
+  shell: docker run -d --name {{ doom_name }} -e TZ=Asia/Shanghai -v {{ doom_cfg_dir }}:{{ doom_cfg_dir }} -p {{doom_port}}:80 -p 8000:8000 -p 7001:7001 {{ doom_image }}
 
  
 - name: 重启doom-server

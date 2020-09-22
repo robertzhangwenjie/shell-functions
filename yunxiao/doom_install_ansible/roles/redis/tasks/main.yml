@@ -17,7 +17,7 @@
 - name: 启动redis
   block:
   - name: 尝试启动doom-redis
-    shell: docker run -itd --name {{ redis_name }} -p {{ redis_port }}:6379  {{ redis_image }}
+    shell: docker run -itd --name {{ redis_name }} -e TZ=Asia/Shanghai -p {{ redis_port }}:6379  {{ redis_image }}
   rescue:
   - name: 失败重启doom-redis
     shell: docker restart {{ redis_name }}
