@@ -391,7 +391,7 @@ deploy_war() {
   PID_FIND_STR="${TOMCAT_HOME}"
   log_info "启动tomcat"
   cd "$TOMCAT_HOME/bin" || return
-
+  chmod 755 *.sh
   do_it ./startup.sh || project_log_error_exit "Tomcat启动失败"
   sleep 3
 }
