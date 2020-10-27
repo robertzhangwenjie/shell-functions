@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-09-08 21:45:34
+ # @LastEditTime: 2020-10-27 15:16:03
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -35,12 +35,6 @@ export SCRIPTPATH=$0
 
 source "${WORK_PATH}/env_script/functions"
 source "${WORK_PATH}/env_script/conf/env.cfg"
-
-
-UPLOAD_URL="http://package.switch.aliyun.com:9090/upload"
-DOWNLOAD_URL="http://package.switch.aliyun.com:8088"
-ENV_SCRIPT="env_script.zip"
-UPLOAD_SCRIPT="curl -X POST -F warName=@${ENV_SCRIPT} -F crid=0  -F appName=yunxiao -F buildNum=1 -F compileId=1 ${UPLOAD_URL}"
 
 # 安装依赖包
 install_dependeces() {
