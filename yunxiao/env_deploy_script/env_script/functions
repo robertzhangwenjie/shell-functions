@@ -426,7 +426,7 @@ EOF" >"${HOME}/$NGINX_CONF"
   # tar -xvf ${deploy_package} -C  ${deploy_dir} > /dev/null 2>&1
 
   log_info "解压部署包${deploy_package}到${HOME}"
-  do_it tar -xf "${deploy_package}" -C "${HOME}" && project_log_error_exit "部署包解压失败"
+  do_it tar -xf "${deploy_package}" -C "${HOME}" || project_log_error_exit "部署包解压失败"
 
   # 重启nginx server
   log_info "Restart nginx"
