@@ -2,9 +2,9 @@
 ###
  # @Author: robert zhang
  # @Date: 2020-09-01 20:35:22
- # @LastEditTime: 2020-09-01 20:37:50
+ # @LastEditTime: 2020-10-28 17:44:46
  # @LastEditors: robert zhang
- # @Description: vue构建脚本
+ # @Description: vue/react构建脚本
  # @
 ### 
 #!/bin/bash
@@ -23,7 +23,12 @@ npm install
 npm run build
 
 # 将静态资源dist目录打包并重命名
-mv dist ${appName}
+if [ -e "dist" ];then
+  mv dist "${appName}"
+elif [ -e "build" ];then
+  mv build "${appName}"
+fi
+
 # 压缩
 package_name=${appName}.tar.gz
 tar -cf ${package_name} ${appName}
