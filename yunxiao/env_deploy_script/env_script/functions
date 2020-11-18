@@ -365,6 +365,7 @@ deploy_jar() {
 # 部署.tar.gz包
 deploy_tgz() {
   local deploy_package=$1
+  
   log_info "Starting deploy ${deploy_package}"
 
   # 部署目录
