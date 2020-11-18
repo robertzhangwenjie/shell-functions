@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2019-09-02 12:23:30
- # @LastEditTime: 2020-10-27 15:09:30
+ # @LastEditTime: 2020-11-01 21:48:01
  # @LastEditors: robert zhang
 # @Description: 环境一键部署脚本
 # @
@@ -46,7 +46,6 @@ if [ "$CHECK_URL" == 1 ]; then
   CHECK_URL=""
 fi
 
-
 # 检查应用名
 if [ "x$APP_NAME" = "x" ]; then
   log_error "appName should not be empty"
@@ -71,9 +70,6 @@ if [ -z "${TAR_ADDRESS}" ]; then
   exit 1
 fi
 
-# 更新部署脚本
-update_env_script
-
 # 清理环境
 clean_env
 
@@ -89,8 +85,8 @@ createPIDfile
 log_info "等待${SLEEP_TIME}s检查部署状态"
 sleep 20
 
-# 检查部署是否成功
-check_deploy_status "$CHECK_URL"
+# 检查部署状态
+check_deploy_status
 
 # 部署成功，记录本次部署命令
 echo "$SUDO_COMMAND" > $RESTORE_FILE_PATH
@@ -100,8 +96,6 @@ get_app_log
 
 log_success "应用部署成功" 
 
-# 打印外部访问地址
-host_external_ip=$(get_external_ip) && log_info "外部访问地址:http://${host_external_ip}:${PORT}"
 # 打印内部访问地址
 host_internal_ip=$(get_internal_ip) && log_info "内部访问地址:http://${host_internal_ip}:${PORT}"
 

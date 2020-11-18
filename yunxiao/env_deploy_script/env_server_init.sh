@@ -2,7 +2,7 @@
 ###
 # @Author: robert zhang
 # @Date: 2020-08-25 11:34:37
- # @LastEditTime: 2020-10-27 15:16:03
+ # @LastEditTime: 2020-11-01 21:40:00
  # @LastEditors: robert zhang
 # @Description: 初始化账号配置,需要root权限
 # @
@@ -21,7 +21,7 @@
 #     $SCRIPTPATH all
 #
 #   # Add user 1080 2080
-#     $SCRIPTPATH 1080 2080       
+#     $SCRIPTPATH 1080 2080
 #
 # Please report bugs at <https://github.com/robertzhangwenjie/shell-functions/issues>.
 #---help---
@@ -40,50 +40,17 @@ source "${WORK_PATH}/env_script/conf/env.cfg"
 install_dependeces() {
   log_info "安装依赖: $*"
   # 判断是否有网
-  if ! ping -w 3 www.baidu.com > /dev/null 2>&1;then
-    log_error "无法访问外部网络，下载"$@"失败" && return 1
+  if ! ping -w 3 www.baidu.com >/dev/null 2>&1; then
+    log_error "无法访问外部网络" && return 1
   fi
-  do_it $PACKAGE_INSTALL_TOOL install -y $@
+  do_it "$PACKAGE_INSTALL_TOOL" install -y "$@"
 }
 
-# 上传env_script
-upload_env_script() {
+# 生成env_script
+generate_env_script() {
   log_info "使用zip压缩目录：env_script"
   do_it chmod 755 -R env_script/*
-  do_it zip -qr ${ENV_SCRIPT} env_script/*
-  log_info "上传 ${ENV_SCRIPT}:$UPLOAD_SCRIPT"
-  ENV_SCRIPT_ADDRESS=$(eval "${UPLOAD_SCRIPT}")
-
-  if [ $? -eq 0 ]; then
-    local response_code
-
-    response_code=$($UPLOAD_SCRIPT | jq .status)
-    if [ "$response_code" == "200" ]; then
-      log_info "上传成功，下载地址：$ENV_SCRIPT_ADDRESS"
-      return 0
-    else
-      log_warning "上传失败: $ENV_SCRIPT_ADDRESS"
-      return 1
-    fi
-  else
-    log_error "上传脚本到服务器失败"
-    return 1
-  fi
-}
-
-# 下载env_script脚本包
-get_env_script() {
-  upload_env_script
-  if [ $? -eq 0 ]; then
-    log_info "downloading ${DOWNLOAD_URL}/${ENV_SCRIPT_ADDRESS}"
-    wget -nv -O "${HOME}"/${ENV_SCRIPT} ${DOWNLOAD_URL}/"${ENV_SCRIPT_ADDRESS}"
-
-    [ ! $? -eq 0 ] && log_info "download ${ENV_SCRIPT_ADDRESS} failed"
-    log_info "downloaded ${ENV_SCRIPT} to ${HOME} successful"
-  else
-    log_info "复制${ENV_SCRIPT} 到 ${HOME}"
-    cp "${WORK_PATH}"/$ENV_SCRIPT "${HOME}"
-  fi
+  do_it zip -qr "${ENV_SCRIPT}" env_script/*
 }
 
 # 添加sudo权限
@@ -125,7 +92,7 @@ add_sudo_group() {
 
   log_info "设置sudo权限"
   # 添加sudo账户的权限
-  local add_group_cfg="%${YUNXIAO_GROUP} ALL=(ALL) NOPASSWD:/usr/bin/docker,/bin/cp,/usr/sbin/nginx,/usr/bin/netstat"
+  local add_group_cfg="%${YUNXIAO_GROUP} ALL=(ALL) NOPASSWD:ALL"
   # 传递换进变量到sudo账户
   local add_env_cfg='Defaults env_keep += "PATH"'
   # tty设置,适合sudo-1.6.9-1.7.2
@@ -147,11 +114,28 @@ add_sudo_group() {
 # 添加脚本到用户家目录
 install_env_script() {
 
+  # 清空当前目录下的env_script.zip
+  if [ -e "$WORK_PATH/$ENV_SCRIPT" ]; then
+    rm -rf "${WORK_PATH:?}/$ENV_SCRIPT"
+  fi
+  # 重新生成env_script.zip
+  generate_env_script
   local username=$1
-  log_info "复制${ENV_SCRIPT} 到 /home/${username}"
-  do_it /bin/cp -rf "/root/$ENV_SCRIPT" "/home/$username"
-  # 删除老的目录
+
+  # 复制前清空用户下老的包
+  log_info "复制$WORK_PATH/$ENV_SCRIPT到 /home/${username}"
+  if [ -e "/home/$username/$ENV_SCRIPT" ]; then
+    rm -rf "/home/${username:?}/$ENV_SCRIPT"
+  fi
+  # 拷贝新的脚本到用户目录下
+  do_it cp -rf "$WORK_PATH/$ENV_SCRIPT" "/home/$username"
+
+  # 清空老的目录
+  if [ -e "/home/$username/env_script" ]; then
+    rm -rf "/home/$username/env_script"
+  fi
   do_it rm -rf "/home/$username/env_script"
+
   # 重新解压
   do_it unzip -o -d "/home/$username" "/home/$username/$ENV_SCRIPT"
   # 授权
@@ -186,14 +170,8 @@ print_help() {
 
 # 初始化系统
 init_server() {
-  # esh模板引擎
-  log_info "安装esh模板引擎"
-  esh_path="${WORK_PATH}/env_script/commons/esh"
-  do_it chmod a+x "$esh_path"
-  do_it cp "$esh_path" /usr/bin/
-
   # 安装依赖
-  install_dependeces git unzip zip jq
+  install_dependeces unzip zip
   # 获取部署脚本
   get_env_script
   # 添加sudo执行权限组
@@ -204,7 +182,7 @@ init_server() {
   do_it chown -R root:${YUNXIAO_GROUP:?} "$NGINX_CONFIG_DIR"
 }
 
-cd "${WORK_PATH}"  || exit
+cd "${WORK_PATH}" || exit
 
 if [ -n "$1" ]; then
   case $1 in
@@ -226,4 +204,3 @@ if [ -n "$1" ]; then
 else
   print_help
 fi
-
