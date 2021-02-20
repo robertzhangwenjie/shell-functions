@@ -20,7 +20,7 @@ cd target
 #命名一个参数
 request1="buildNum=${BUILD_NUMBER}"
 #命名一个参数，warName上传的jar包一定要写正确
-war=$(ls ./*.jar)
+war=$(ls *.jar)
 packageName="warName=@${war}"
 #上传jar包
-curl -X POST -F "${packageName}" -F 'crid=${crid}' -F 'compileId=${compileId}' -F 'appName=${appName}' -F "${request1}"  http://package.switch.aliyun.com:9090/upload
+curl -X POST -F "${packageName}" -F 'crid=${crid}' -F 'compileId=${compileId}' -F 'appName=${appName}' -F "${request1}"  http://package.switch.aliyun.com:9090/callBack
