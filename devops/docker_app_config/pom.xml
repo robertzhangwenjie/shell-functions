@@ -1,0 +1,108 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.alipay.sofa</groupId>
+        <artifactId>sofaboot-enterprise-dependencies</artifactId>
+        <version>3.2.1</version>
+    </parent>
+
+    <groupId>com.sdebank.ngdb</groupId>
+    <artifactId>ngdb-octs</artifactId>
+    <version>1.0.5-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>ngdb-octs</name>
+    <description>NGDB应用技术平台-跨中心编排服务</description>
+
+    <modules>
+        <module>ngdb-octs-server</module>
+    </modules>
+
+    <properties>
+        <java.version>1.8</java.version>
+        <mysql.connector.java.version>5.1.34</mysql.connector.java.version>
+        <project.version>1.0.5-SNAPSHOT</project.version>
+        <param.sdk.version>1.0.3.RELEASE</param.sdk.version>
+        <ngdb.common.dependencies.version>1.0.RELEASE</ngdb.common.dependencies.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.sdebank.ngdb</groupId>
+            <artifactId>ngdb-rssc-exception</artifactId>
+            <version>1.0.3.RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sdebank.ngdb</groupId>
+            <artifactId>ngdb-rssc-facade</artifactId>
+            <version>1.0.3.RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sdebank.ngdb</groupId>
+            <artifactId>ngdb-serialno-facade</artifactId>
+            <version>1.0.3.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sdebank.ngdb</groupId>
+            <artifactId>ngdb-serialno-exception</artifactId>
+            <version>1.0.3.RELEASE</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.7</version>
+                <configuration>
+                    <generateBackupPoms>false</generateBackupPoms>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>1.4.2.RELEASE</version>
+                <configuration>
+                    <outputDirectory>../target</outputDirectory>
+                    <classifier>executable</classifier>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>releases</id>
+            <url>http://172.16.80.121:8081/repository/NGDB-SHELL</url>
+        </repository>
+
+        <snapshotRepository>
+            <id>snapshots</id>
+            <url>http://172.16.80.121:8081/repository/NGDB-SHELL</url>
+        </snapshotRepository>
+    </distributionManagement>
+</project>
